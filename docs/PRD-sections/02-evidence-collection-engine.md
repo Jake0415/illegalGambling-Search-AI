@@ -1,0 +1,196 @@
+# 3.2 채증 엔진 기능 요구사항
+
+> 작성일: 2026-03-14
+> 작성: browser-automation-specialist
+> 참조: service-concept.md, topic1-browser-automation.md, consolidated-report.md, captcha-strategy.md, decisions.md, playwright-test-report.md
+
+---
+
+## 개요
+
+채증 엔진은 불법 도박 사이트에 대해 법적 증거력을 갖춘 3단계 스크린샷 채증을 자동으로 수행하는 핵심 백엔드 서비스이다. `rebrowser-playwright` 기반으로 브라우저 자동화를 수행하며, Claude Vision을 활용한 지능형 폼 탐지, CAPTCHA 하이브리드 처리, 팝업 자동 처리 등을 포함한다.
+
+> **실제 테스트 결과 반영** (2026-03-14, Playwright MCP 테스트)
+> - Wego88, TotoHot 등 실제 사이트 접속 테스트 완료
+> - Cloudflare JS Challenge: Playwright 기본 설정으로 자동 통과 확인
+> - CAPTCHA 출현 빈도: 예상보다 낮음 (Wego88: CAPTCHA 없음, SMS OTP만 필수)
+> - 팝업: 접속 시 3개 이상 프로모션 팝업이 UI를 차단 -- 자동 처리 필수
+
+---
+
+## 1단계 채증 -- 메인화면 채증 (P0, Phase 1)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| FR-EC-001 | rebrowser-playwright 기반 사이트 접속 | 대상 URL을 `rebrowser-playwright`로 접속한다. Runtime.Enable CDP 유출 패치가 적용된 브라우저로 실행하여 안티봇 탐지를 우회한다. 접속 실패 시 최대 3회 재시도하며, 프록시 로테이션을 적용한다. | P0 | Phase 1 | 1. rebrowser-playwright로 브라우저 인스턴스를 생성할 수 있다<br>2. 정상 사이트 접속 성공률 95% 이상<br>3. 접속 실패 시 재시도 로직이 동작한다<br>4. 접속 타임아웃(30초)이 적용된다<br>5. rebrowser-bot-detector 테스트를 모두 통과한다 | `rebrowser-playwright` (Playwright 드롭인 교체), `fingerprint-suite` (브라우저 핑거프린트 다양화), 레지덴셜 프록시 (IPRoyal/SOAX) |
+| FR-EC-002 | Cloudflare/JS Challenge 자동 통과 | Cloudflare Turnstile, JS Challenge 등 안티봇 챌린지를 자동으로 감지하고 통과한다. stealth 패치가 적용된 rebrowser-playwright로 1차 통과를 시도하고, 실패 시 CapSolver Turnstile API를 호출한다. | P0 | Phase 1 | 1. Cloudflare "보안 확인 수행 중" 페이지를 자동 감지한다<br>2. JS Challenge를 5초 이내 자동 통과한다 (실제 테스트: TotoHot 3~5초 통과 확인)<br>3. Turnstile CAPTCHA 출현 시 CapSolver API로 처리한다<br>4. 통과 실패 시 에러 로그를 기록하고 다음 단계로 진행하지 않는다 | `rebrowser-playwright` (Runtime.Enable 패치), CapSolver Turnstile API ($1.20/1K건) |
+| FR-EC-003 | 메인 페이지 풀페이지 스크린샷 | 대상 사이트의 메인 페이지를 풀페이지(전체 스크롤 영역) 스크린샷으로 캡처한다. 뷰포트 크기는 1920x1080 기본값이며, 모바일 뷰(375x812)도 선택적으로 캡처한다. | P0 | Phase 1 | 1. 풀페이지 스크린샷이 PNG 형식으로 저장된다<br>2. 해상도가 1920px 너비 이상이다<br>3. 페이지 하단까지 모든 콘텐츠가 포함된다<br>4. 스크린샷 파일에 SHA-256 해시값이 자동 생성된다<br>5. 파일명에 사이트 도메인 + 타임스탬프가 포함된다 | `page.screenshot({ fullPage: true })`, S3/MinIO 저장, SHA-256 해시 생성 |
+| FR-EC-004 | HTML 소스 저장 | 접속한 페이지의 전체 HTML 소스를 저장한다. SingleFile CLI로 외부 리소스(CSS, 이미지, JS)를 포함한 단일 HTML 파일을 생성하고, WARC 형식으로도 원본 트래픽을 보존한다. | P0 | Phase 1 | 1. 페이지 HTML이 `.html` 파일로 저장된다<br>2. SingleFile CLI로 인라인 리소스를 포함한 단일 HTML이 생성된다<br>3. WARC 형식으로 HTTP 요청/응답 원본이 저장된다<br>4. 저장된 HTML을 오프라인에서 열면 원본과 동일하게 렌더링된다<br>5. 파일에 SHA-256 해시값이 자동 생성된다 | SingleFile CLI, `warcio.js`, `page.content()` |
+| FR-EC-005 | 네트워크 요청 로그 기록 | 페이지 로드 중 발생하는 모든 네트워크 요청(URL, 메서드, 상태코드, 헤더, 응답 크기)을 JSON 형태로 기록한다. 외부 API 호출, 트래킹 스크립트, 광고 네트워크 등을 식별할 수 있는 수준으로 기록한다. | P0 | Phase 1 | 1. 모든 HTTP/HTTPS 요청이 JSON 로그에 기록된다<br>2. 각 요청에 URL, method, status, headers, responseSize, timestamp가 포함된다<br>3. 요청 로그가 시간순으로 정렬된다<br>4. 외부 도메인 요청을 별도로 분류할 수 있다<br>5. 로그 파일에 SHA-256 해시값이 자동 생성된다 | `page.on('request')`, `page.on('response')`, CDP `Network.requestWillBeSent` |
+| FR-EC-006 | WHOIS/DNS 정보 수집 | 대상 도메인의 WHOIS 등록 정보(등록일, 만료일, 등록자, 네임서버 등)와 DNS 레코드(A, AAAA, MX, NS, TXT)를 수집하여 JSON으로 저장한다. | P0 | Phase 1 | 1. WHOIS 정보에 등록일, 만료일, 등록자, 네임서버가 포함된다<br>2. DNS A/AAAA/MX/NS/TXT 레코드가 수집된다<br>3. IP 주소에 대한 역방향 DNS 조회 결과가 포함된다<br>4. Cloudflare/CDN 뒤의 실제 IP 탐지를 시도한다<br>5. 수집 결과가 JSON으로 저장되고 SHA-256 해시가 생성된다 | `whois` 라이브러리, Node.js `dns` 모듈, RDAP API |
+
+---
+
+## 2단계 채증 -- 회원가입 및 배팅 시작 화면 (P1, Phase 2)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| FR-EC-007 | Claude Vision 기반 폼 필드 자동 탐지 | 회원가입 페이지의 스크린샷을 Claude Haiku 4.5 Vision API로 분석하여 폼 필드(아이디, 비밀번호, 전화번호, CAPTCHA 등)의 위치와 유형을 자동 탐지한다. 사이트별 어댑터 패턴 없이 범용적으로 동작한다. | P1 | Phase 2 | 1. 스크린샷에서 입력 필드 유형(텍스트, 비밀번호, 드롭다운, 전화번호)을 90% 이상 정확도로 탐지한다<br>2. 각 필드의 DOM selector를 구조화된 JSON으로 반환한다<br>3. 한국어/영어 라벨을 모두 인식한다<br>4. 필수/선택 필드를 구분한다<br>5. 탐지 결과로 자동 입력이 가능하다 | Claude Haiku 4.5 Vision API ($0.003/건), 구조화 출력 (tool_use), `page.screenshot()` |
+| FR-EC-008 | 회원가입 폼 자동 입력 | 탐지된 폼 필드에 자동으로 데이터를 입력한다. 아이디는 영문+숫자 랜덤 생성(8~12자), 비밀번호는 문자+숫자 조합(8~16자), 전화번호는 SMS 가상번호 API에서 획득한 번호를 입력한다. 인간 유사 타이핑 딜레이(50~150ms)를 적용한다. | P1 | Phase 2 | 1. 랜덤 아이디가 영문+숫자 조합으로 생성된다<br>2. 비밀번호가 보안 요구사항(문자+숫자+특수문자)을 충족한다<br>3. 각 필드 입력 시 50~150ms 타이핑 딜레이가 적용된다<br>4. 드롭다운(통화 선택 등)이 정상적으로 선택된다<br>5. 입력 완료 후 폼 유효성 검증 에러가 없다<br>6. Wego88 가입 폼 구조(아이디/비밀번호/통화/전화번호/OTP) 기준으로 동작한다 | `page.fill()`, `page.type()` (딜레이 옵션), `page.selectOption()`, crypto.randomBytes |
+| FR-EC-009 | 회원가입 완료 화면 캡처 | 회원가입 폼 제출 후 완료/확인 페이지를 풀페이지 스크린샷으로 캡처한다. 가입 성공 여부를 페이지 콘텐츠에서 판별하고 결과를 기록한다. | P1 | Phase 2 | 1. 가입 폼 제출 후 리디렉션된 페이지를 캡처한다<br>2. 가입 성공/실패 여부를 판별하여 메타데이터에 기록한다<br>3. 가입 성공 시 로그인 상태를 유지한다<br>4. 스크린샷에 SHA-256 해시가 생성된다<br>5. 가입 시 사용한 아이디/비밀번호를 암호화하여 DB에 저장한다 | `page.waitForNavigation()`, `page.screenshot({ fullPage: true })`, AES-256 암호화 |
+| FR-EC-010 | 배팅 메뉴/시작 화면 캡처 | 로그인 후 스포츠 배팅 메뉴 또는 배팅 시작 화면으로 이동하여 풀페이지 스크린샷을 캡처한다. 로그인 없이 배팅 목록에 접근 가능한 사이트(Wego88 사례)에서는 로그인 전에도 캡처한다. | P1 | Phase 2 | 1. 스포츠/카지노/경마 등 배팅 메뉴를 자동 탐지하여 이동한다<br>2. 배팅 종목 목록이 포함된 풀페이지 스크린샷을 캡처한다<br>3. 로그인 없이 접근 가능한 경우 별도로 표시한다 (Wego88 테스트: `/sports` 로그인 없이 접근 가능 확인)<br>4. 스크린샷에 SHA-256 해시가 생성된다 | `page.click()` (메뉴 탐색), Claude Vision (메뉴 위치 탐지), `page.screenshot({ fullPage: true })` |
+| FR-EC-011 | 입금/충전 안내 화면 캡처 | 로그인 후 입금/충전/결제 안내 페이지로 이동하여 캡처한다. 계좌번호, 결제 수단, 최소 입금액 등 금전 거래 증거를 확보한다. | P1 | Phase 2 | 1. 입금/충전 메뉴를 자동 탐지하여 이동한다<br>2. 계좌번호, 암호화폐 주소, 결제 수단 정보가 포함된 화면을 캡처한다<br>3. 캡처된 화면에서 금액/계좌 정보를 텍스트로 추출하여 메타데이터에 기록한다<br>4. 스크린샷에 SHA-256 해시가 생성된다 | Claude Vision (메뉴 탐지 + 텍스트 추출), `page.screenshot({ fullPage: true })` |
+
+---
+
+## 3단계 채증 -- 실제 배팅 화면 (P1, Phase 2)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| FR-EC-012 | 배팅 가능 종목/경기 목록 캡처 | 스포츠 배팅 페이지에서 현재 배팅 가능한 종목(축구, 야구, 경마 등)과 경기 목록을 풀페이지 스크린샷으로 캡처한다. 각 종목별로 개별 캡처도 수행한다. | P1 | Phase 2 | 1. 배팅 가능한 스포츠 종목 목록을 캡처한다<br>2. 각 종목별 경기 목록(최소 1종목)을 캡처한다<br>3. 실제 경기 일정/팀명이 포함된 화면을 확보한다<br>4. Wego88 기준 스포츠북 6개(SBO Sports, BTi Sports, APGaming 등)를 각각 캡처한다<br>5. 스크린샷에 SHA-256 해시가 생성된다 | `page.screenshot({ fullPage: true })`, Claude Vision (종목 메뉴 탐지) |
+| FR-EC-013 | 배팅 폼/배당률 화면 캡처 | 특정 경기를 선택하여 배팅 폼과 배당률(오즈) 화면을 캡처한다. 배팅 금액 입력 필드, 예상 수익, 배당률 정보가 포함된 화면을 확보한다. | P1 | Phase 2 | 1. 경기 목록에서 특정 경기를 클릭하여 배팅 폼으로 이동한다<br>2. 배당률(오즈) 정보가 포함된 화면을 캡처한다<br>3. 배팅 금액 입력 필드가 표시된 화면을 캡처한다<br>4. 스크린샷에 SHA-256 해시가 생성된다 | Claude Vision (배팅 버튼/폼 탐지), `page.click()`, `page.screenshot()` |
+| FR-EC-014 | 배팅 실행 화면 캡처 (최소 금액) | 최소 금액으로 실제 배팅을 실행하고 실행 화면(배팅 접수/확인)을 캡처한다. 배팅 전 확인 화면과 배팅 완료 후 확인 화면을 각각 캡처한다. | P1 | Phase 2 | 1. 최소 배팅 금액을 입력한다<br>2. 배팅 접수 전 확인 화면을 캡처한다<br>3. 배팅 실행 후 완료/확인 화면을 캡처한다<br>4. 배팅 실행 과정에서 CAPTCHA 출현 시 하이브리드 전략이 적용된다<br>5. 모든 스크린샷에 SHA-256 해시가 생성된다<br>6. 배팅 금액, 종목, 배당률을 메타데이터에 기록한다 | `page.fill()` (금액 입력), `page.click()` (배팅 버튼), `page.waitForNavigation()`, Claude Vision (확인 버튼 탐지) |
+
+---
+
+## 팝업/광고 자동 처리 (P1, Phase 2)
+
+> **실제 테스트 근거**: Wego88 접속 시 3개의 프로모션 팝업이 연속 출현하여 UI 인터랙션을 차단. 팝업 처리 없이는 채증 자동화가 불가.
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| FR-EC-015 | 프로모션 팝업 자동 감지 및 닫기 | 사이트 접속 시 출현하는 프로모션/이벤트 팝업을 자동으로 감지하고 닫기 버튼을 클릭하여 제거한다. 연속으로 출현하는 다수의 팝업(3개 이상)도 순차적으로 처리한다. | P1 | Phase 2 | 1. 접속 후 2초 이내에 팝업 출현을 감지한다<br>2. 닫기 버튼(X, 닫기, close, 확인)을 자동으로 탐지하고 클릭한다<br>3. 연속 팝업(3개 이상)을 모두 순차적으로 닫는다 (Wego88: 3개 팝업 확인)<br>4. 팝업 닫기 후 메인 콘텐츠에 정상 접근 가능하다<br>5. 팝업 스크린샷을 별도 저장한다 (광고 내용 증거) | `page.on('dialog')`, `page.locator()` (닫기 버튼 탐색), Claude Vision (닫기 버튼 위치 탐지), `MutationObserver` |
+| FR-EC-016 | dialog 오버레이 차단 시 닫기 버튼 탐색/클릭 | `<dialog>` 또는 CSS 오버레이(`position: fixed`, `z-index`)가 페이지 인터랙션을 차단하는 경우, 해당 오버레이의 닫기 버튼을 자동으로 탐색하여 클릭한다. 닫기 버튼이 없는 경우 오버레이 DOM 요소를 직접 제거한다. | P1 | Phase 2 | 1. `dialog[open]` 요소를 자동 감지한다<br>2. `position: fixed` + 높은 `z-index`의 오버레이를 감지한다<br>3. 오버레이 내 닫기 버튼을 탐색하여 클릭한다<br>4. 닫기 버튼 없는 경우 `element.remove()` 또는 `dialog.close()`로 제거한다<br>5. 오버레이 제거 후 하위 콘텐츠 클릭이 가능하다 | `page.evaluate()` (DOM 조작), `page.locator('dialog[open]')`, CSS selector 기반 오버레이 탐지 |
+| FR-EC-017 | iframe 내 광고 처리 | iframe으로 삽입된 광고 팝업을 감지하고 처리한다. iframe 내부의 닫기 버튼을 탐색하거나, iframe 자체를 DOM에서 제거한다. | P1 | Phase 2 | 1. 광고 iframe을 자동 감지한다 (광고 도메인, 크기, 위치 기반)<br>2. iframe 내부의 닫기 버튼을 `page.frameLocator()`로 탐색하여 클릭한다<br>3. 닫기 불가 시 iframe DOM 요소를 제거한다<br>4. 광고 iframe 제거 후 페이지 기능에 영향이 없다 | `page.frameLocator()`, `page.frames()`, `page.evaluate()` (iframe 제거) |
+| FR-EC-018 | 사이트별 팝업 패턴 어댑터 | 사이트별로 반복 출현하는 팝업 패턴을 학습하여 어댑터로 저장한다. 동일 사이트 재방문 시 학습된 패턴으로 즉시 처리한다. 새로운 패턴은 Claude Vision으로 범용 처리 후 어댑터에 추가한다. | P1 | Phase 2 | 1. 사이트 도메인별 팝업 패턴(CSS selector, 닫기 버튼 위치)을 DB에 저장한다<br>2. 재방문 시 저장된 패턴으로 즉시 팝업을 처리한다 (1초 이내)<br>3. 새로운 팝업 패턴을 Claude Vision으로 분석하여 자동으로 어댑터에 추가한다<br>4. 어댑터 관리 UI에서 패턴을 수동 편집할 수 있다 | PostgreSQL (패턴 저장), Claude Haiku 4.5 Vision (새 패턴 분석), JSON schema 기반 어댑터 |
+
+---
+
+## 브라우저 세션 관리 (P0, Phase 1)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| FR-EC-019 | 브라우저 인스턴스 풀 관리 | 동시 다수 사이트 채증을 위한 브라우저 인스턴스 풀을 관리한다. 최대 동시 실행 수를 제한하고, 유휴 인스턴스를 자동 정리한다. | P0 | Phase 1 | 1. 동시 실행 브라우저 인스턴스 수를 설정값으로 제한한다 (기본: 5개)<br>2. 채증 완료 후 브라우저 인스턴스가 자동 종료된다<br>3. 비정상 종료된 인스턴스를 감지하여 정리한다<br>4. 메모리 사용량을 모니터링하고 임계치 초과 시 경고한다 | rebrowser-playwright `browser.newContext()`, BullMQ (작업 큐 동시성 제한) |
+| FR-EC-020 | 행동 시뮬레이션 (인간 유사 동작) | 봇 탐지를 회피하기 위해 인간 유사 브라우저 행동을 시뮬레이션한다. 마우스 이동, 스크롤, 타이핑 딜레이, 요청 간격 랜덤화를 적용한다. | P0 | Phase 1 | 1. 마우스 이동 시 베지어 곡선 경로를 따른다<br>2. 텍스트 입력 시 50~150ms 랜덤 딜레이가 적용된다<br>3. 페이지 이동 간 2~8초 랜덤 대기가 적용된다<br>4. 스크롤 동작이 자연스러운 속도로 수행된다<br>5. 행동 패턴이 매 세션마다 약간씩 다르다 | `page.mouse.move()`, `page.type(delay)`, `setTimeout(randomDelay)`, `fingerprint-suite` |
+| FR-EC-021 | 쿠키/세션 관리 및 재활용 | 채증 세션의 쿠키와 로컬 스토리지를 저장하여 재방문 시 활용한다. Cloudflare 통과 쿠키를 재사용하여 재접속 시 챌린지를 건너뛴다. | P0 | Phase 1 | 1. 세션 쿠키를 암호화하여 저장한다<br>2. 재방문 시 저장된 쿠키를 복원한다<br>3. Cloudflare `cf_clearance` 쿠키를 재사용하여 챌린지를 건너뛴다<br>4. 만료된 쿠키를 자동으로 정리한다 | `context.storageState()`, `context.addCookies()`, AES-256 암호화, Redis (세션 캐시) |
+
+---
+
+## 채증 파이프라인 오케스트레이션 (P0, Phase 1)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| FR-EC-022 | 3단계 채증 파이프라인 오케스트레이션 | 1단계(메인화면) -> 2단계(회원가입/배팅시작) -> 3단계(배팅실행)를 순차적으로 자동 실행하는 파이프라인을 관리한다. 각 단계의 성공/실패를 판별하고, 실패 시 해당 단계를 스킵하거나 재시도한다. | P0 | Phase 1 | 1. 3단계 채증이 순차적으로 자동 실행된다<br>2. 각 단계별 성공/실패/스킵 상태를 DB에 기록한다<br>3. 1단계 실패 시 전체 채증을 중단한다<br>4. 2단계 실패 시 3단계를 스킵하고 1단계 결과만 저장한다<br>5. 각 단계별 타임아웃(1단계: 2분, 2단계: 5분, 3단계: 5분)이 적용된다 | BullMQ (작업 큐), PostgreSQL (상태 관리), 상태 머신 패턴 |
+| FR-EC-023 | 채증 실패 복구 및 재시도 | 네트워크 오류, 타임아웃, 예기치 못한 페이지 변경 등으로 채증이 실패한 경우 자동 재시도한다. 최대 재시도 횟수와 재시도 간격(지수 백오프)을 설정한다. | P0 | Phase 1 | 1. 네트워크 오류 시 최대 3회 자동 재시도한다<br>2. 재시도 간격이 지수 백오프(10초, 30초, 90초)로 증가한다<br>3. 재시도 시 프록시 IP를 변경한다<br>4. 최종 실패 시 실패 사유를 상세히 기록한다<br>5. 재시도 이력이 DB에 기록된다 | BullMQ (재시도 설정, backoff: exponential), 프록시 로테이션 |
+| FR-EC-024 | 채증 결과 메타데이터 기록 | 각 채증 단계에서 수집한 모든 정보의 메타데이터를 구조화된 JSON으로 기록한다. URL, 타임스탬프, 접속 IP, 프록시 정보, 브라우저 정보, 채증 소요 시간 등을 포함한다. | P0 | Phase 1 | 1. 메타데이터에 URL, 접속 시각(ISO 8601), 접속 IP, User-Agent가 포함된다<br>2. 프록시 사용 시 프록시 IP와 국가 정보가 기록된다<br>3. 각 채증 단계별 소요 시간이 밀리초 단위로 기록된다<br>4. 브라우저 핑거프린트 정보(viewport, 언어, 타임존)가 기록된다<br>5. 메타데이터 JSON에 SHA-256 해시가 생성된다 | PostgreSQL (메타데이터 저장), `metadata.json` 파일 생성, `Date.now()` |
+
+---
+
+## 에러 처리 및 모니터링 (P1, Phase 2)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| FR-EC-025 | 채증 실시간 모니터링 | 진행 중인 채증 작업의 상태를 실시간으로 대시보드에 표시한다. 현재 단계, 진행률, 경과 시간, 에러 발생 여부를 표시한다. | P1 | Phase 2 | 1. 진행 중인 채증 작업 목록이 실시간 업데이트된다<br>2. 각 작업의 현재 단계(1단계/2단계/3단계)가 표시된다<br>3. 에러 발생 시 즉시 대시보드에 반영된다<br>4. 완료/실패 통계가 실시간으로 집계된다 | WebSocket (실시간 업데이트), BullMQ 이벤트, Next.js Server-Sent Events |
+| FR-EC-026 | 채증 에러 로깅 및 알림 | 채증 중 발생하는 모든 에러를 구조화된 형태로 로깅하고, 치명적 에러 발생 시 Slack/웹 푸시로 알림을 전송한다. | P1 | Phase 2 | 1. 에러 로그에 에러 유형, 발생 위치, 스택 트레이스, 스크린샷이 포함된다<br>2. 에러 발생 시점의 페이지 스크린샷을 자동 저장한다<br>3. 동일 에러 반복 시 집계하여 알림한다<br>4. 치명적 에러(전체 채증 중단 등) 발생 시 1분 이내 알림이 전송된다 | Winston/Pino (로깅), Slack Webhook, Web Push API |
+
+---
+
+# 3.4 CAPTCHA 하이브리드 처리 기능 요구사항
+
+> **실제 테스트 근거**: CAPTCHA 출현 빈도는 예상보다 낮음 (Wego88: CAPTCHA 없음). 그러나 일부 사이트에서 간헐적으로 출현하므로 대응 체계는 필수. 월 예상 비용 ~$2로 전체 운영비의 극히 일부.
+
+---
+
+## CAPTCHA 유형 탐지 (P1, Phase 2)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| FR-EC-027 | Claude Vision CAPTCHA 유형 탐지 | 페이지 스크린샷을 Claude Haiku 4.5 Vision API로 분석하여 CAPTCHA 유형을 자동 탐지한다. reCAPTCHA v2/v3, hCaptcha, Cloudflare Turnstile, 이미지 CAPTCHA, 슬라이더 CAPTCHA를 구분한다. | P1 | Phase 2 | 1. reCAPTCHA v2 (체크박스/이미지 선택) 탐지 정확도 95% 이상<br>2. reCAPTCHA v3 (invisible) 탐지 -- 스크립트 기반 감지<br>3. hCaptcha 탐지 정확도 95% 이상<br>4. Cloudflare Turnstile 탐지 정확도 95% 이상<br>5. 이미지 텍스트 CAPTCHA 탐지 정확도 90% 이상<br>6. 슬라이더 CAPTCHA 탐지 정확도 90% 이상<br>7. CAPTCHA 유형별 sitekey를 DOM에서 자동 추출한다<br>8. CAPTCHA 미출현을 정확히 판별한다 (false positive 5% 이하) | Claude Haiku 4.5 Vision API ($0.003/건), `page.getAttribute('[data-sitekey]')`, DOM 분석 (`page.evaluate()`) |
+| FR-EC-028 | CAPTCHA 유형별 라우팅 | 탐지된 CAPTCHA 유형에 따라 최적의 풀이 방법(CapSolver/2Captcha/수동 개입)으로 자동 라우팅한다. 각 유형별 예상 성공률과 소요 시간을 기반으로 최적 경로를 선택한다. | P1 | Phase 2 | 1. reCAPTCHA v2 -> CapSolver (1순위) -> 2Captcha (2순위) 순서로 시도한다<br>2. hCaptcha -> CapSolver (1순위) -> 2Captcha (2순위) 순서로 시도한다<br>3. Cloudflare Turnstile -> CapSolver Turnstile API (1순위)로 시도한다<br>4. 이미지 텍스트 -> CapSolver (1순위) -> 2Captcha (2순위) 순서로 시도한다<br>5. 슬라이더 -> CapSolver (1순위) -> 수동 개입 (2순위)로 시도한다<br>6. 라우팅 결정 시간이 500ms 이내이다 | 전략 패턴 (Strategy Pattern), CAPTCHA 유형별 핸들러 |
+
+---
+
+## 자동 풀이 -- CapSolver API (P1, Phase 2)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| FR-EC-029 | CapSolver API 자동 풀이 (1순위) | CAPTCHA 감지 시 CapSolver API를 호출하여 자동으로 풀이한다. Token 모드(API 직접 호출)를 기본으로 사용하며, sitekey와 페이지 URL을 전달하여 토큰을 획득하고 페이지에 주입한다. | P1 | Phase 2 | 1. reCAPTCHA v2 풀이 성공률 95% 이상, 소요 시간 3~9초<br>2. reCAPTCHA v3 풀이 성공률 99%, 소요 시간 즉시<br>3. hCaptcha 풀이 성공률 90% 이상, 소요 시간 3~12초<br>4. Cloudflare Turnstile 풀이 성공률 95% 이상, 소요 시간 1~5초<br>5. 이미지 텍스트 풀이 성공률 98%, 소요 시간 1~3초<br>6. 획득한 토큰을 `g-recaptcha-response` 또는 해당 필드에 자동 주입한다<br>7. API 호출 실패 시 2Captcha로 자동 폴백한다<br>8. API 잔액 부족 시 알림을 전송한다 | CapSolver REST API, Token 모드 (ReCaptchaV2TaskProxyLess 등), `page.evaluate()` (토큰 주입) |
+
+---
+
+## 보조 솔버 -- 2Captcha 폴백 (P1, Phase 2)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| FR-EC-030 | 2Captcha 폴백 풀이 (2순위) | CapSolver 실패 시 2Captcha API를 폴백으로 호출한다. 사람이 직접 풀이하므로 정확도가 높으나 소요 시간이 길다 (10~60초). | P1 | Phase 2 | 1. CapSolver 실패 후 자동으로 2Captcha로 전환한다<br>2. 풀이 정확도 99% (사람 풀이)<br>3. 소요 시간 10~60초 이내<br>4. 토큰 획득 후 페이지에 자동 주입한다<br>5. 2Captcha도 실패 시 수동 개입으로 에스컬레이션한다<br>6. 폴백 전환 이력을 로그에 기록한다 | 2Captcha REST API ($1~3/1K건), 동일 토큰 주입 방식 |
+
+---
+
+## CDP Pause & Attach 수동 개입 (P1, Phase 2)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| FR-EC-031 | CDP Pause & Attach 수동 개입 (3순위) | 자동 풀이가 모두 실패한 경우, 브라우저 세션을 일시 정지하고 CDP WebSocket을 통해 대시보드에서 원격 브라우저 화면을 스트리밍한다. 사용자가 직접 CAPTCHA를 풀면 자동화를 재개한다. | P1 | Phase 2 | 1. 자동 풀이 실패 시 브라우저 세션이 일시 정지된다<br>2. CDP WebSocket으로 원격 브라우저 화면이 대시보드에 스트리밍된다<br>3. 사용자의 마우스/키보드 입력이 원격 브라우저에 전달된다<br>4. CAPTCHA 풀이 완료를 자동 감지하여 자동화를 재개한다<br>5. 수동 개입 타임아웃(5분)이 적용된다<br>6. 타임아웃 시 해당 사이트 채증을 스킵한다 | `--remote-debugging-port=9222`, CDP WebSocket, Next.js WebSocket 서버, `waitForCaptchaSolved()` |
+| FR-EC-032 | 대시보드 CAPTCHA 큐 관리 | `/investigations/captcha-queue` 페이지에서 CAPTCHA 수동 풀이 대기 중인 세션 목록을 관리한다. 대기 시간, CAPTCHA 유형, 사이트 URL을 표시하고, 우선순위 기반으로 정렬한다. | P1 | Phase 2 | 1. 대기 큐에 CAPTCHA 유형, 사이트 URL, 대기 시간이 표시된다<br>2. 큐 항목을 클릭하면 원격 브라우저 뷰어가 열린다<br>3. 대기 시간 기준 자동 정렬 (오래된 것 우선)<br>4. 건너뛰기/타임아웃 연장/세션 종료 버튼이 동작한다<br>5. 새 CAPTCHA 대기 시 브라우저 알림 + Slack 알림이 전송된다<br>6. 모바일 반응형 UI로 터치 기반 CAPTCHA 풀이가 가능하다 | Next.js App Router, WebSocket, Slack Webhook, Web Push API, shadcn/ui 컴포넌트 |
+| FR-EC-033 | CAPTCHA/OTP 수동 개입 알림 | CAPTCHA 또는 OTP 수동 개입이 필요한 경우 담당자에게 즉시 알림을 전송한다. Slack 웹훅과 브라우저 웹 푸시를 지원하며, 모바일 알림에도 대응한다. | P1 | Phase 2 | 1. 수동 개입 필요 시 Slack 채널에 1분 이내 알림이 전송된다<br>2. 알림에 사이트 URL, CAPTCHA 유형, 현재 스크린샷 미리보기가 포함된다<br>3. 웹 푸시 알림이 대시보드 구독자에게 전송된다<br>4. 알림에 대시보드 직접 링크가 포함된다<br>5. 5분 내 응답 없으면 재알림이 전송된다 | Slack Incoming Webhook, Web Push API (`PushManager`), Service Worker |
+
+---
+
+## Computer Use 폴백 (P2, Phase 4)
+
+> **의사결정 근거**: Computer Use는 Playwright 대비 50x 느리고 3000x 비싸므로 폴백 전용. 미지 사이트 ~10%에서만 호출. (decisions.md 참조)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| FR-EC-034 | Claude Computer Use 폴백 | Playwright 기반 자동화가 완전히 실패한 미지 사이트에 대해 Claude Computer Use(Sonnet 4.6)를 폴백으로 호출한다. 스크린샷 기반으로 화면을 분석하고 마우스/키보드 액션을 수행하여 채증을 진행한다. | P2 | Phase 4 | 1. Playwright 자동화 실패 시 자동으로 Computer Use 모드로 전환한다<br>2. Computer Use로 페이지 네비게이션, 폼 입력, 버튼 클릭이 가능하다<br>3. 액션당 소요 시간 ~5초 이내<br>4. 전체 사이트의 ~10%에서만 호출되어 월 추가 비용이 $15~25 이내이다<br>5. Computer Use 세션 로그가 상세히 기록된다<br>6. Computer Use로 CAPTCHA "풀이"는 수행하지 않는다 (Anthropic ToS 준수) | Claude Sonnet 4.6 Computer Use API ($0.30~0.50/액션), 스크린샷 -> 분석 -> 액션 루프 |
+
+---
+
+## 요구사항 요약
+
+| 카테고리 | 요구사항 ID 범위 | 개수 | 우선순위 | Phase |
+|---------|----------------|------|---------|-------|
+| 1단계 채증 (메인화면) | FR-EC-001 ~ FR-EC-006 | 6 | P0 | Phase 1 |
+| 2단계 채증 (회원가입/배팅시작) | FR-EC-007 ~ FR-EC-011 | 5 | P1 | Phase 2 |
+| 3단계 채증 (배팅 실행) | FR-EC-012 ~ FR-EC-014 | 3 | P1 | Phase 2 |
+| 팝업/광고 처리 | FR-EC-015 ~ FR-EC-018 | 4 | P1 | Phase 2 |
+| 브라우저 세션 관리 | FR-EC-019 ~ FR-EC-021 | 3 | P0 | Phase 1 |
+| 채증 파이프라인 오케스트레이션 | FR-EC-022 ~ FR-EC-024 | 3 | P0 | Phase 1 |
+| 에러 처리 및 모니터링 | FR-EC-025 ~ FR-EC-026 | 2 | P1 | Phase 2 |
+| CAPTCHA 유형 탐지 | FR-EC-027 ~ FR-EC-028 | 2 | P1 | Phase 2 |
+| CAPTCHA 자동 풀이 (CapSolver) | FR-EC-029 | 1 | P1 | Phase 2 |
+| CAPTCHA 폴백 (2Captcha) | FR-EC-030 | 1 | P1 | Phase 2 |
+| CDP Pause & Attach 수동 개입 | FR-EC-031 ~ FR-EC-033 | 3 | P1 | Phase 2 |
+| Computer Use 폴백 | FR-EC-034 | 1 | P2 | Phase 4 |
+| **합계** | **FR-EC-001 ~ FR-EC-034** | **34** | | |
+
+---
+
+## 비기능 요구사항 (채증 엔진 관련)
+
+| ID | 제목 | 설명 | 목표값 |
+|----|------|------|--------|
+| NFR-EC-001 | 1단계 채증 성공률 | 접속 가능한 사이트에 대한 메인화면 캡처 성공률 | 95% 이상 |
+| NFR-EC-002 | 3단계 채증 성공률 | 전체 채증 파이프라인 완료율 | 70% 이상 |
+| NFR-EC-003 | 평균 채증 소요 시간 | 3단계 전체 채증 소요 시간 | 10분 이내 |
+| NFR-EC-004 | 동시 채증 처리 수 | 동시에 채증을 수행할 수 있는 사이트 수 | 5개 이상 |
+| NFR-EC-005 | CAPTCHA 자동 풀이 성공률 | CapSolver + 2Captcha 자동 풀이 성공률 | 95% 이상 |
+| NFR-EC-006 | 수동 개입 응답 시간 | CAPTCHA/OTP 수동 개입 알림 후 응답까지 시간 | 5분 이내 |
+| NFR-EC-007 | 월 CAPTCHA 비용 | CAPTCHA 솔버 API 월 비용 (500사이트 기준) | $5 이하 |
+| NFR-EC-008 | 안티봇 우회율 | rebrowser-playwright 기반 안티봇 우회 성공률 | 85% 이상 (Tier 1) |
+
+---
+
+## 월 예상 비용 (채증 엔진, 500사이트 기준)
+
+| 항목 | 단가 | 예상 건수 | 월 비용 |
+|------|------|----------|---------|
+| rebrowser-playwright (Tier 1) | 무료 | - | $0 |
+| Nstbrowser (Tier 2, 선택) | $29.90/월 | - | $0~30 |
+| CapSolver (CAPTCHA 1차) | $0.80/1K건 | ~1,500건 | ~$1.20 |
+| 2Captcha (CAPTCHA 2차 폴백) | $2.50/1K건 | ~150건 | ~$0.38 |
+| Claude Haiku 4.5 (폼/CAPTCHA 탐지) | $0.003/건 | ~2,500건 | ~$7.50 |
+| Claude Sonnet 4.6 (Computer Use 폴백) | $0.30~0.50/액션 | ~50건 | ~$15~25 |
+| **합계** | | | **~$24~64** |
+
+> **참고**: SMS 인증($700~1,400/월)과 프록시($100~500/월) 비용은 별도 섹션에서 다룬다.

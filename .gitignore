@@ -33,6 +33,15 @@ yarn-error.log*
 # env files (can opt-in for committing if needed)
 .env*
 
+# Slack listener state
+.slack-listener-state.json
+
+# PM2 logs
+/logs
+
+# Playwright MCP logs
+.playwright-mcp/
+
 # vercel
 .vercel
 
