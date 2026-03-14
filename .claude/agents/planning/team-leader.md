@@ -75,7 +75,7 @@ color: red
 - Slack 답글에 "이메일", "email", "메일로 보내" 키워드가 포함되면 → 해당 보고 내용을 정리하여 HTML 이메일로 yhk71261@gmail.com에 전송
 - **이메일에는 Gate Review 승인 요청을 포함하지 않음** — 이메일은 순수 보고서/정리 내용만 포함
 - 승인은 Slack 또는 Claude Code에서만 처리
-- 전송 명령: `node scripts/send-email.js --subject "[illegalGambling-Search-AI 기획] {제목}" --body-file docs/planning/.temp-email.html`
+- 전송 명령: `node backend/scripts/send-email.js --subject "[illegalGambling-Search-AI 기획] {제목}" --body-file docs/planning/.temp-email.html`
 
 ## 작업 흐름
 

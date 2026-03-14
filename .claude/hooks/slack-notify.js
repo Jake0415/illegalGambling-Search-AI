@@ -43,6 +43,11 @@ process.stdin.on("end", () => {
   let text;
   if (hookType === "stop") {
     const reason = parsed.hook_event_name || "stop";
+    const lastMessage = parsed.last_assistant_message || "";
+    // last_assistant_message에서 작업 내용 요약 추출 (최대 800자)
+    const contentSummary = lastMessage
+      ? lastMessage.slice(0, 800)
+      : "상세 내용 없음";
     text = [
       "\u2705 *\uc791\uc5c5 \uc644\ub8cc \uc54c\ub9bc*",
       "",
@@ -50,7 +55,8 @@ process.stdin.on("end", () => {
       `\u2022 \uc0c1\ud0dc: ${reason}`,
       `\u2022 \uc2dc\uac04: ${timestamp}`,
       "",
-      "Claude Code \uc791\uc5c5\uc774 \uc644\ub8cc\ub418\uc5c8\uc2b5\ub2c8\ub2e4.",
+      `*\uc791\uc5c5 \ub0b4\uc6a9:*`,
+      contentSummary,
     ].join("\n");
   } else {
     const message = parsed.message || "\uc54c\ub9bc";

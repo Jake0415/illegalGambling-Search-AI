@@ -1,0 +1,607 @@
+// ============================================================================
+// Prisma Schema — 불법 도박 사이트 자동 검색/채증 시스템
+// PRD 08절 데이터 모델 기반 21개 테이블 정의
+// ============================================================================
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================================================
+// Enum 정의
+// ============================================================================
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  OPERATOR
+  INVESTIGATOR
+  LEGAL
+}
+
+enum SiteStatus {
+  ACTIVE
+  INACTIVE
+  CLOSED
+  MONITORING
+}
+
+enum SiteCategory {
+  SPORTS_BETTING
+  HORSE_RACING
+  CASINO
+  OTHER_GAMBLING
+  NON_GAMBLING
+}
+
+enum InvestigationStatus {
+  QUEUED
+  IN_PROGRESS
+  STAGE_1_COMPLETE
+  STAGE_2_COMPLETE
+  STAGE_3_COMPLETE
+  COMPLETED
+  FAILED
+  CANCELLED
+}
+
+enum EvidenceFileType {
+  SCREENSHOT
+  HTML
+  WARC
+  NETWORK_LOG
+  WHOIS
+  METADATA
+  SINGLEFILE
+}
+
+enum HashAlgorithm {
+  SHA256
+}
+
+enum VerificationStatus {
+  PENDING
+  VALID
+  INVALID
+}
+
+enum TimestampType {
+  OPENTIMESTAMPS
+  RFC3161
+}
+
+enum AuditAction {
+  CREATE
+  READ
+  UPDATE
+  DELETE
+  DOWNLOAD
+  VERIFY
+  EXPORT
+}
+
+enum SmsProvider {
+  PVAPINS
+  GRIZZLYSMS
+  SMS_ACTIVATE
+  MANUAL
+}
+
+enum SmsNumberStatus {
+  ACTIVE
+  USED
+  EXPIRED
+  BLOCKED
+}
+
+enum InterventionType {
+  CAPTCHA
+  OTP
+  UNKNOWN_FORM
+}
+
+enum InterventionStatus {
+  PENDING
+  IN_PROGRESS
+  RESOLVED
+  EXPIRED
+}
+
+enum DetectionSource {
+  GOOGLE_SEARCH
+  CRAWLING
+  COMMUNITY
+  MANUAL
+}
+
+enum ClassificationModel {
+  CLAUDE_HAIKU
+  XGBOOST
+  BERT
+  ENSEMBLE
+}
+
+enum ReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  MODIFIED
+}
+
+enum DomainStatus {
+  ALIVE
+  DEAD
+  REDIRECT
+}
+
+// ============================================================================
+// G. 사용자 관리 (Phase 1) — NextAuth.js v5 호환
+// ============================================================================
+
+model User {
+  id            String    @id @default(uuid(7))
+  name          String?
+  email         String    @unique
+  emailVerified DateTime? @map("email_verified")
+  passwordHash  String    @map("password_hash")
+  image         String?
+  role          UserRole  @default(OPERATOR)
+  isActive      Boolean   @default(true) @map("is_active")
+  lastLoginAt   DateTime? @map("last_login_at")
+
+  accounts                Account[]
+  sessions                Session[]
+  investigations          Investigation[]
+  auditLogs               AuditLog[]
+  keywords                Keyword[]
+  classificationReviews   ClassificationResult[]
+  assignedInterventions   ManualInterventionQueue[] @relation("AssignedInterventions")
+  updatedSystemSettings   SystemSetting[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([email])
+  @@index([role])
+  @@index([isActive])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(uuid(7))
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refreshToken      String? @map("refresh_token") @db.Text
+  accessToken       String? @map("access_token") @db.Text
+  expiresAt         Int?    @map("expires_at")
+  tokenType         String? @map("token_type")
+  scope             String?
+  idToken           String? @map("id_token") @db.Text
+  sessionState      String? @map("session_state")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(uuid(7))
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// ============================================================================
+// A. 핵심 엔티티 (Phase 1)
+// ============================================================================
+
+model Site {
+  id              String        @id @default(uuid(7))
+  url             String        @unique
+  domain          String
+  status          SiteStatus    @default(ACTIVE)
+  category        SiteCategory?
+  confidenceScore Float?        @map("confidence_score")
+  firstDetectedAt DateTime      @default(now()) @map("first_detected_at")
+  lastCheckedAt   DateTime?     @map("last_checked_at")
+  tags            Json?         @default("[]")
+  whoisData       Json?         @map("whois_data")
+  dnsRecords      Json?         @map("dns_records")
+  notes           String?
+
+  investigations        Investigation[]
+  detectionResults      DetectionResult[]
+  classificationResults ClassificationResult[]
+  domainHistory         DomainHistory[]
+  popupPatterns         PopupPattern[]
+  siteDomainClusters    SiteDomainCluster[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([domain])
+  @@index([status])
+  @@index([category])
+  @@index([confidenceScore])
+  @@index([firstDetectedAt])
+  @@map("sites")
+}
+
+model Investigation {
+  id                 String              @id @default(uuid(7))
+  siteId             String              @map("site_id")
+  status             InvestigationStatus @default(QUEUED)
+  currentStage       Int                 @default(1) @map("current_stage")
+  startedAt          DateTime?           @map("started_at")
+  completedAt        DateTime?           @map("completed_at")
+  errorMessage       String?             @map("error_message")
+  retryCount         Int                 @default(0) @map("retry_count")
+  scheduledAt        DateTime?           @map("scheduled_at")
+  proxyUsed          String?             @map("proxy_used")
+  browserFingerprint Json?               @map("browser_fingerprint")
+  createdById        String?             @map("created_by")
+
+  site                Site                      @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  createdBy           User?                     @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  evidenceFiles       EvidenceFile[]
+  smsNumbers          SmsNumber[]
+  manualInterventions ManualInterventionQueue[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([siteId])
+  @@index([status])
+  @@index([createdById])
+  @@index([scheduledAt])
+  @@index([status, scheduledAt])
+  @@map("investigations")
+}
+
+// ============================================================================
+// B. 증거 무결성 (Phase 1-2)
+// ============================================================================
+
+model EvidenceFile {
+  id               String           @id @default(uuid(7))
+  investigationId  String           @map("investigation_id")
+  fileType         EvidenceFileType @map("file_type")
+  stage            Int
+  filePath         String           @map("file_path")
+  fileSize         BigInt           @map("file_size")
+  mimeType         String           @map("mime_type")
+  sha256Hash       String           @map("sha256_hash")
+  originalFilename String?          @map("original_filename")
+  description      String?
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Restrict)
+  hashRecords   HashRecord[]
+  timestamps    Timestamp[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([investigationId])
+  @@index([fileType])
+  @@index([sha256Hash])
+  @@map("evidence_files")
+}
+
+model HashRecord {
+  id                 String             @id @default(uuid(7))
+  evidenceFileId     String             @map("evidence_file_id")
+  algorithm          HashAlgorithm      @default(SHA256)
+  hashValue          String             @map("hash_value")
+  verifiedAt         DateTime?          @map("verified_at")
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+
+  evidenceFile EvidenceFile @relation(fields: [evidenceFileId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([evidenceFileId])
+  @@index([hashValue])
+  @@index([verificationStatus])
+  @@map("hash_records")
+}
+
+model Timestamp {
+  id                 String             @id @default(uuid(7))
+  evidenceFileId     String             @map("evidence_file_id")
+  type               TimestampType
+  timestampValue     DateTime           @map("timestamp_value")
+  proofFilePath      String?            @map("proof_file_path")
+  verifiedAt         DateTime?          @map("verified_at")
+  verificationStatus VerificationStatus @default(PENDING) @map("verification_status")
+
+  evidenceFile EvidenceFile @relation(fields: [evidenceFileId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([evidenceFileId])
+  @@index([type])
+  @@index([verificationStatus])
+  @@map("timestamps")
+}
+
+model AuditLog {
+  id         String      @id @default(uuid(7))
+  entityType String      @map("entity_type")
+  entityId   String      @map("entity_id")
+  action     AuditAction
+  actorId    String?     @map("actor_id")
+  actorIp    String?     @map("actor_ip")
+  details    Json?
+  prevHash   String?     @map("prev_hash")
+
+  actor User? @relation(fields: [actorId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([entityType, entityId])
+  @@index([actorId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// C. SMS 인증 (Phase 2)
+// ============================================================================
+
+model SmsNumber {
+  id              String          @id @default(uuid(7))
+  phoneNumber     String          @map("phone_number")
+  countryCode     String          @default("+82") @map("country_code")
+  provider        SmsProvider
+  status          SmsNumberStatus @default(ACTIVE)
+  investigationId String?         @map("investigation_id")
+  assignedAt      DateTime?       @map("assigned_at")
+  expiredAt       DateTime?       @map("expired_at")
+  costUsd         Decimal?        @map("cost_usd") @db.Decimal(10, 4)
+
+  investigation Investigation? @relation(fields: [investigationId], references: [id], onDelete: SetNull)
+  smsMessages   SmsMessage[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([phoneNumber])
+  @@index([provider])
+  @@index([status])
+  @@index([investigationId])
+  @@map("sms_numbers")
+}
+
+model SmsMessage {
+  id          String    @id @default(uuid(7))
+  smsNumberId String    @map("sms_number_id")
+  messageText String    @map("message_text")
+  otpCode     String?   @map("otp_code")
+  receivedAt  DateTime  @map("received_at")
+  parsedAt    DateTime? @map("parsed_at")
+
+  smsNumber SmsNumber @relation(fields: [smsNumberId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([smsNumberId])
+  @@index([receivedAt])
+  @@map("sms_messages")
+}
+
+// ============================================================================
+// D. CAPTCHA/수동 개입 (Phase 2)
+// ============================================================================
+
+model ManualInterventionQueue {
+  id              String             @id @default(uuid(7))
+  investigationId String             @map("investigation_id")
+  type            InterventionType
+  status          InterventionStatus @default(PENDING)
+  cdpSessionUrl   String?            @map("cdp_session_url")
+  screenshotPath  String?            @map("screenshot_path")
+  assignedToId    String?            @map("assigned_to")
+  resolvedAt      DateTime?          @map("resolved_at")
+  resolutionNotes String?            @map("resolution_notes")
+
+  investigation Investigation @relation(fields: [investigationId], references: [id], onDelete: Restrict)
+  assignedTo    User?         @relation("AssignedInterventions", fields: [assignedToId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([investigationId])
+  @@index([status])
+  @@index([type])
+  @@index([assignedToId])
+  @@index([status, createdAt])
+  @@map("manual_intervention_queue")
+}
+
+// ============================================================================
+// E. 탐지 엔진 (Phase 2-3)
+// ============================================================================
+
+model Keyword {
+  id             String @id @default(uuid(7))
+  keyword        String
+  category       String?
+  isActive       Boolean @default(true) @map("is_active")
+  detectionCount Int     @default(0) @map("detection_count")
+  createdById    String? @map("created_by")
+
+  createdBy        User?             @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  detectionResults DetectionResult[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([keyword])
+  @@index([category])
+  @@index([isActive])
+  @@map("keywords")
+}
+
+model DetectionResult {
+  id        String          @id @default(uuid(7))
+  siteId    String          @map("site_id")
+  source    DetectionSource
+  keywordId String?         @map("keyword_id")
+  rawData   Json?           @map("raw_data")
+
+  site    Site     @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  keyword Keyword? @relation(fields: [keywordId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([siteId])
+  @@index([source])
+  @@index([keywordId])
+  @@index([createdAt])
+  @@map("detection_results")
+}
+
+// ============================================================================
+// F. 분류 (Phase 2-3)
+// ============================================================================
+
+model ClassificationResult {
+  id              String              @id @default(uuid(7))
+  siteId          String              @map("site_id")
+  model           ClassificationModel
+  category        String?
+  confidenceScore Float               @map("confidence_score")
+  evidence        Json?               @default("[]")
+  reviewStatus    ReviewStatus        @default(PENDING) @map("review_status")
+  reviewedById    String?             @map("reviewed_by")
+  reviewedAt      DateTime?           @map("reviewed_at")
+
+  site       Site  @relation(fields: [siteId], references: [id], onDelete: Restrict)
+  reviewedBy User? @relation(fields: [reviewedById], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([siteId])
+  @@index([model])
+  @@index([reviewStatus])
+  @@index([confidenceScore])
+  @@index([createdAt])
+  @@map("classification_results")
+}
+
+// ============================================================================
+// G. 도메인 모니터링 (Phase 2)
+// ============================================================================
+
+model DomainHistory {
+  id             String       @id @default(uuid(7))
+  siteId         String       @map("site_id")
+  domain         String
+  ipAddress      String?      @map("ip_address")
+  dnsRecords     Json?        @map("dns_records")
+  status         DomainStatus
+  checkedAt      DateTime     @map("checked_at")
+  responseTimeMs Int?         @map("response_time_ms")
+  redirectUrl    String?      @map("redirect_url")
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([siteId])
+  @@index([domain])
+  @@index([status])
+  @@index([checkedAt])
+  @@index([siteId, checkedAt])
+  @@map("domain_history")
+}
+
+model DomainCluster {
+  id          String @id @default(uuid(7))
+  name        String
+  description String?
+
+  sites SiteDomainCluster[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("domain_clusters")
+}
+
+model SiteDomainCluster {
+  siteId    String @map("site_id")
+  clusterId String @map("cluster_id")
+
+  site    Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  cluster DomainCluster @relation(fields: [clusterId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@id([siteId, clusterId])
+  @@map("site_domain_clusters")
+}
+
+// ============================================================================
+// H. 시스템 설정 (Phase 1)
+// ============================================================================
+
+model SystemSetting {
+  id          String  @id @default(uuid(7))
+  key         String  @unique
+  value       Json
+  description String?
+  updatedById String? @map("updated_by")
+
+  updatedBy User? @relation(fields: [updatedById], references: [id], onDelete: SetNull)
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([key])
+  @@map("system_settings")
+}
+
+// ============================================================================
+// I. 팝업 패턴 (Phase 2)
+// ============================================================================
+
+model PopupPattern {
+  id                  String  @id @default(uuid(7))
+  siteId              String? @map("site_id")
+  patternType         String  @map("pattern_type")
+  cssSelector         String  @map("css_selector")
+  closeButtonSelector String? @map("close_button_selector")
+  isActive            Boolean @default(true) @map("is_active")
+  successCount        Int     @default(0) @map("success_count")
+  failCount           Int     @default(0) @map("fail_count")
+
+  site Site? @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([siteId])
+  @@index([patternType])
+  @@index([isActive])
+  @@map("popup_patterns")
+}

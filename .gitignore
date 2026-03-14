@@ -1,7 +1,5 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
 # dependencies
-/node_modules
+node_modules/
 /.pnp
 .pnp.*
 .yarn/*
@@ -14,7 +12,7 @@
 /coverage
 
 # next.js
-/.next/
+.next/
 /out/
 
 # production
@@ -30,14 +28,16 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
+# env files
 .env*
+!.env.example
 
 # MCP config (contains API tokens)
 .mcp.json
 
 # Slack listener state
 .slack-listener-state.json
+.tmp-prompt-*.txt
 
 # PM2 logs
 /logs
@@ -45,9 +45,24 @@ yarn-error.log*
 # Playwright MCP logs
 .playwright-mcp/
 
+# Shrimp Task Manager data
+/shrimp-data
+
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Prisma generated
+frontend/src/generated/prisma
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+dist/
+.venv/
+venv/

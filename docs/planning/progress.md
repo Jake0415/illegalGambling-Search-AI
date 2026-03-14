@@ -2,8 +2,8 @@
 
 ## 현재 단계
 
-- **단계**: Plan 1.5 - 기술 심층 리서치
-- **상태**: 완료
+- **단계**: Plan 2 - PRD 작성
+- **상태**: 완료 (Phase A + Phase B)
 - **최종 업데이트**: 2026-03-14
 
 ## 완료된 작업
@@ -93,6 +93,15 @@
 | **[Plan 1.5]** Topic 4: Claude LLM 연동 | `docs/planning/plan1.5-tech-review/topic4-claude-llm-integration.md` | 완료 |
 | **[Plan 1.5]** 통합 보고서 | `docs/planning/plan1.5-tech-review/consolidated-report.md` | 완료 |
 | 의사결정 로그 | `docs/planning/decisions.md` | 완료 (7건 기록) |
+| **[Plan 2]** 통합 PRD | `docs/PRD.md` | 완료 |
+| **[Plan 2]** 제품 개요 및 스토리 | `docs/PRD-sections/01-overview-and-stories.md` | 완료 |
+| **[Plan 2]** 채증 엔진 PRD | `docs/PRD-sections/02-evidence-collection-engine.md` | 완료 |
+| **[Plan 2]** SMS 인증 PRD | `docs/PRD-sections/03-sms-authentication.md` | 완료 |
+| **[Plan 2]** 증거 무결성 PRD | `docs/PRD-sections/04-evidence-integrity.md` | 완료 |
+| **[Plan 2]** 탐지 엔진 PRD | `docs/PRD-sections/05-detection-engine.md` | 완료 |
+| **[Plan 2]** 대시보드/UI PRD | `docs/PRD-sections/06-dashboard-and-ui.md` | 완료 |
+| **[Plan 2]** API 명세 PRD | `docs/PRD-sections/07-api-specification.md` | 완료 |
+| **[Plan 2]** 데이터 모델 PRD | `docs/PRD-sections/08-data-model.md` | 완료 |
 
 ## Slack 답글 추적
 
@@ -105,10 +114,34 @@
 |------|------|--------|------|
 | 2026-03-14 | Slack-이메일 연동 테스트 보고서 | yhk71261@gmail.com | 전송 완료 |
 
+### Plan 2: PRD 작성 (2026-03-14)
+
+#### Phase A: 핵심 기능 요구사항 - 완료
+- [x] `docs/PRD-sections/01-overview-and-stories.md` — 제품 개요, 4개 페르소나, 17개 사용자 스토리
+- [x] `docs/PRD-sections/02-evidence-collection-engine.md` — 채증 엔진 (FR-EC-001~034, 34개 요구사항)
+- [x] `docs/PRD-sections/03-sms-authentication.md` — SMS 인증 자동화 (FR-SMS-001~031, 31개 요구사항)
+- [x] `docs/PRD-sections/04-evidence-integrity.md` — 증거 무결성 (FR-EV-001~017, 17개 요구사항)
+- [x] `docs/PRD-sections/05-detection-engine.md` — 탐지 엔진 (FR-DE-001~030, 30개 요구사항)
+
+#### Phase B: 대시보드/API/데이터모델 + 통합 - 완료
+- [x] `docs/PRD-sections/06-dashboard-and-ui.md` — 대시보드/UI (FR-UI-001~035, 35개 요구사항)
+- [x] `docs/PRD-sections/07-api-specification.md` — REST API 명세 (FR-API-001~049, 49개 요구사항)
+- [x] `docs/PRD-sections/08-data-model.md` — 데이터 모델 (FR-DM-001~020, 20개 요구사항, 21개 테이블)
+- [x] 8개 섹션 교차 검토 — 역할 정의, enum 일관성, 참조 오류 5건 수정
+- [x] `docs/PRD.md` — 통합 PRD (목차, 요약, 용어집, 교차 참조 매트릭스)
+
+#### PRD 통계 요약
+- **총 기능 요구사항**: 216개 (FR-EC 34 + FR-SMS 31 + FR-EV 17 + FR-DE 30 + FR-UI 35 + FR-API 49 + FR-DM 20)
+- **사용자 스토리**: 17개 (4개 페르소나)
+- **데이터 테이블**: 21개
+- **API 엔드포인트**: 49개
+- **의사결정**: 7건 (decisions.md)
+
 ## 다음 단계
 
-- Plan 2: PRD(Product Requirements Document) 작성
-  - 상세 기능 요구사항 정의
-  - 사용자 스토리 작성
-  - 와이어프레임 설계
-  - API 명세 초안
+- Plan 3: 기술 설계 (아키텍처, DB, API 상세 설계)
+  - 시스템 아키텍처 설계 (컴포넌트 다이어그램, 시퀀스 다이어그램)
+  - Prisma 스키마 초안 작성
+  - API 라우트 구조 설계
+  - CI/CD 파이프라인 설계
+  - 개발 환경 구성 (Docker Compose)

@@ -2,7 +2,7 @@ module.exports = {
   apps: [
     {
       name: "slack-listener-gambling",
-      script: "scripts/slack-listener.js",
+      script: "backend/scripts/slack-listener.js",
       cwd: __dirname,
       watch: false,
       autorestart: true,
