@@ -134,11 +134,19 @@
                               │
                               ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│                     API Layer (Next.js API Routes)               │
+│              API Layer (FastAPI — Python)                         │
 │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────────────┐   │
 │  │ 사이트   │ │ 채증     │ │ 증거     │ │ 사용자/인증      │   │
-│  │ API      │ │ API      │ │ 관리 API │ │ API              │   │
+│  │ API      │ │ API      │ │ 관리 API │ │ API (JWT)        │   │
 │  └──────────┘ └──────────┘ └──────────┘ └──────────────────┘   │
+│                                                                  │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │  AI 오케스트레이션 (LangChain + LangGraph)                │   │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐   │   │
+│  │  │ 사이트 분류   │  │ 채증 워크플로우│  │ 키워드 생성  │   │   │
+│  │  │ (LangChain)  │  │ (LangGraph)  │  │ (LangChain)  │   │   │
+│  │  └──────────────┘  └──────────────┘  └──────────────┘   │   │
+│  └──────────────────────────────────────────────────────────┘   │
 └─────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -158,7 +166,7 @@
 │  ┌────────────────────┐  ┌────────────────────┐                 │
 │  │  증거 관리 엔진     │  │  스케줄러           │                │
 │  │  ┌──────────────┐  │  │  ┌──────────────┐  │                │
-│  │  │ 해시 생성기   │  │  │  │ 작업 큐      │  │                │
+│  │  │ 해시 생성기   │  │  │  │ Celery + Redis│  │                │
 │  │  │ 타임스탬프    │  │  │  │ 크론 스케줄   │  │                │
 │  │  │ 보고서 생성   │  │  │  │ 재시도 관리   │  │                │
 │  │  └──────────────┘  │  │  └──────────────┘  │                │
@@ -189,15 +197,16 @@
 | 컴포넌트 | 역할 | 기술 |
 |----------|------|------|
 | Frontend | 관리 UI, 대시보드, 리포트 | Next.js 15, React 19, shadcn/ui |
-| API Layer | RESTful API, 인증/인가 | Next.js API Routes, NextAuth |
-| 탐지 엔진 | 불법 사이트 탐색 및 분류 | Python (ML 모델), Node.js (크롤러) |
-| 채증 엔진 | 3단계 자동 채증 수행 | Playwright, CapSolver, 2Captcha, SMS API |
+| API Layer | RESTful API (35개 엔드포인트), 인증/인가 | **FastAPI (Python)** + JWT 인증 |
+| AI 오케스트레이션 | 사이트 분류, 채증 워크플로우, 키워드 생성, 보고서 생성 | **LangChain + LangGraph** + Claude |
+| 탐지 엔진 | 불법 사이트 탐색 및 분류 | LangChain + Claude Haiku (분류), Crawlee (크롤러) |
+| 채증 엔진 | 3단계 자동 채증 수행 | **LangGraph 상태 머신**, Playwright, CapSolver, SMS API |
 | CAPTCHA 수동 개입 | 자동 풀이 실패 시 사용자 개입 | CDP WebSocket, Next.js 대시보드 |
-| 증거 관리 | 해시/타임스탬프/보고서 | Node.js crypto, PDF 생성 |
-| 스케줄러 | 작업 큐 관리, 스케줄링 | BullMQ + Redis |
-| DB | 사이트/채증/증거 데이터 | PostgreSQL |
+| 증거 관리 | 해시/타임스탬프/보고서 | Python hashlib, PDF 생성 |
+| 스케줄러 | 작업 큐 관리, 스케줄링 | **Celery + Redis** |
+| ORM/DB | 사이트/채증/증거 데이터 | **SQLAlchemy + Alembic** + PostgreSQL |
 | 캐시/큐 | 작업 큐, 세션 캐시 | Redis |
-| 파일 저장 | 스크린샷, HTML, 증거 파일 | S3 호환 스토리지 (MinIO) |
+| 파일 저장 | 스크린샷, HTML, 증거 파일 | **MinIO** (S3 호환 오브젝트 스토리지) |
 
 ---
 
@@ -212,14 +221,15 @@
 | 차트/통계 | Recharts 또는 Chart.js | 대시보드용 |
 | 테이블 | TanStack Table | 사이트 목록, 채증 결과 |
 
-### 4.2 백엔드
+### 4.2 백엔드 (2026-03-15 아키텍처 결정 반영)
 | 구분 | 기술 | 비고 |
 |------|------|------|
-| API | Next.js API Routes + Server Actions | 모노레포 유지 |
-| ORM | Prisma | PostgreSQL 연동 |
-| 인증 | NextAuth.js v5 | 관리자 로그인 |
-| 작업 큐 | BullMQ | Redis 기반, 채증 작업 관리 |
-| 스케줄러 | node-cron + BullMQ | 주기적 탐지 실행 |
+| API 프레임워크 | **FastAPI (Python)** | 35개 REST API 엔드포인트, 자동 OpenAPI 문서 |
+| ORM | **SQLAlchemy + Alembic** | PostgreSQL 연동, 비동기 asyncpg |
+| 인증 | **FastAPI JWT** (python-jose + passlib) | 관리자 로그인, RBAC |
+| AI 오케스트레이션 | **LangChain + LangGraph** | 사이트 분류, 채증 워크플로우, 키워드 생성, 보고서 생성 |
+| 작업 큐 | **Celery + Redis** | 채증 작업 관리, 비동기 처리 |
+| 스케줄러 | Celery Beat | 주기적 탐지 실행 |
 
 ### 4.3 채증 엔진
 | 구분 | 기술 | 비고 |
@@ -231,13 +241,15 @@
 | SMS 인증 | GrizzlySMS / PVAPins API | 한국 가상번호 |
 | 프록시 | IPRoyal / SOAX | 레지덴셜 로테이션 프록시 |
 
-### 4.4 AI/ML (탐지)
+### 4.4 AI/ML (탐지) — LangChain/LangGraph 기반 (2026-03-15 결정)
 | 구분 | 기술 | 비고 |
 |------|------|------|
-| URL 분류 | XGBoost / LightGBM | 1차 필터링 |
-| 콘텐츠 분류 | BERT/RoBERTa 기반 모델 | 한국어 웹페이지 분류 |
-| 이미지 분석 | CNN (EfficientNet) | 도박 사이트 UI 패턴 인식 |
-| 학습 데이터 | KAIST 연구 데이터 + 자체 수집 | 레이블링 필요 |
+| 사이트 분류 | **LangChain + Claude Haiku 4.5** | 도박 여부 판정, F1 94-95%, few-shot |
+| 채증 워크플로우 | **LangGraph 상태 머신** | 3단계 파이프라인, 분기/재시도/수동 개입 오케스트레이션 |
+| 키워드 생성 | **LangChain** | 시드 키워드 -> 유사 키워드 자동 확장 |
+| 보고서 생성 | **LangChain + Claude Sonnet 4.6** | 한국어 수사 보고서 자동 생성 |
+| CAPTCHA 판단 | **LangGraph 분기 로직** | 유형 판별 -> API 풀이/수동 개입/스킵 분기 |
+| 향후 확장 | XGBoost/BERT 하이브리드 | 데이터 축적 후 점진 전환 (Phase 4 이후) |
 
 ### 4.5 인프라
 | 구분 | 기술 | 비고 |

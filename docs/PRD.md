@@ -5,9 +5,9 @@
 | 항목 | 내용 |
 |------|------|
 | **제품명** | illegalGambling-Search-AI (불법 도박 사이트 자동 채증 시스템) |
-| **문서 버전** | 1.0 |
+| **문서 버전** | 1.2 |
 | **작성일** | 2026-03-14 |
-| **최종 수정일** | 2026-03-14 |
+| **최종 수정일** | 2026-03-15 |
 | **작성자** | 기획팀 (browser-automation-specialist, sms-verification-specialist, evidence-compliance-specialist, crawler-search-specialist, frontend-ui-specialist, api-architect) |
 | **문서 유형** | PRD 통합 목차 및 Executive Summary |
 | **상태** | 초안 완료 |
@@ -18,7 +18,7 @@
 
 본 시스템은 인터넷상 불법 스포츠 도박 및 불법 경마 사이트를 AI 기반으로 자동 탐지하고, 법적 증거로 활용 가능한 3단계 스크린샷 채증을 자동 수행하는 통합 시스템이다. 국내 불법 온라인 도박 시장이 연간 수십조 원 규모로 추정되는 가운데, 기존 수사관의 수동 캡처 방식은 인력 집약적이고 증거 무결성 보장이 어려우며, 도메인 호핑(빈번한 도메인 변경)에 대한 대응이 불가능한 한계를 갖고 있다. 본 시스템은 이러한 한계를 해결하기 위해 rebrowser-playwright 기반 브라우저 자동화, PVAPins Non-VoIP SMS OTP 인증, Claude Haiku 4.5 AI 분류, OpenTimestamps/RFC 3161 이중 타임스탬프 등 최신 기술을 결합한다.
 
-시스템은 운영자가 시드 키워드를 입력하면 유사 키워드를 자동 생성하고, Google Custom Search API 및 Crawlee 크롤링 엔진을 통해 불법 사이트를 자동 탐지한 후, 탐지된 사이트에 대해 1단계(메인화면), 2단계(회원가입/배팅시작), 3단계(실제 배팅)까지 자동 채증을 수행한다. 수집된 모든 증거는 SHA-256 해시, OpenTimestamps 비트코인 블록체인 타임스탬프, RFC 3161 PKI 타임스탬프로 무결성이 보장되며, WARC + SingleFile + 스크린샷 + 메타데이터를 포함하는 법원 제출용 증거 패키지가 자동 생성된다.
+시스템은 운영자가 시드 키워드를 입력하면 유사 키워드를 자동 생성하고, Google Custom Search API 및 Scrapy + scrapy-playwright 크롤링 엔진을 통해 불법 사이트를 자동 탐지한 후, 탐지된 사이트에 대해 1단계(메인화면), 2단계(회원가입/배팅시작), 3단계(실제 배팅)까지 자동 채증을 수행한다. 수집된 모든 증거는 SHA-256 해시, OpenTimestamps 비트코인 블록체인 타임스탬프, RFC 3161 PKI 타임스탬프로 무결성이 보장되며, WARC + SingleFile + 스크린샷 + 메타데이터를 포함하는 법원 제출용 증거 패키지가 자동 생성된다.
 
 주요 사용 기관은 사행산업통합감독위원회, 경찰청 사이버수사국, 한국마사회 불법경마 감시팀, 국민체육진흥공단이며, 4개 Phase에 걸쳐 18~26주간 개발한다. Phase 1(MVP)에서 핵심 채증 파이프라인을 검증하고, Phase 4(고도화) 완료 시 월 500건 이상 불법 사이트 탐지, 3단계 채증 성공률 80% 이상(Computer Use 폴백 포함), 증거 무결성 검증 통과율 100%, 시스템 가동률 99.5% 이상을 목표로 한다. 월 운영비는 외부 서비스 기준 $867~2,012 수준이다.
 
@@ -37,7 +37,7 @@
 | 05 | [탐지 엔진 기능 요구사항](./PRD-sections/05-detection-engine.md) | `PRD-sections/05-detection-engine.md` | 검색/크롤링 기반 탐지, Claude Haiku AI 분류, 도메인 호핑 추적, URL 패턴 분석, 스케줄링 |
 | 06 | [대시보드 및 UI 기능 요구사항](./PRD-sections/06-dashboard-and-ui.md) | `PRD-sections/06-dashboard-and-ui.md` | 메인 대시보드, 사이트 관리, 채증 모니터링, 증거 관리, 수동 개입 UI, 통계/리포트 |
 | 07 | [REST API 명세 기능 요구사항](./PRD-sections/07-api-specification.md) | `PRD-sections/07-api-specification.md` | RESTful API 설계, 인증/인가, RBAC, 사이트/채증/증거/탐지/통계 API, SSE/WebSocket |
-| 08 | [데이터베이스 데이터 모델 요구사항](./PRD-sections/08-data-model.md) | `PRD-sections/08-data-model.md` | PostgreSQL 16 + Prisma ORM, 핵심/증거/SMS/탐지/사용자 엔티티, 인덱스/파티셔닝 전략 |
+| 08 | [데이터베이스 데이터 모델 요구사항](./PRD-sections/08-data-model.md) | `PRD-sections/08-data-model.md` | PostgreSQL 16 + SQLAlchemy 2.x ORM, 핵심/증거/SMS/탐지/사용자 엔티티, 인덱스/파티셔닝 전략 |
 
 ---
 
@@ -102,7 +102,8 @@
 | Phase | 기간 | 목표 | 핵심 KPI |
 |-------|------|------|----------|
 | **Phase 1: MVP** | 4~6주 | rebrowser-playwright 기반 핵심 채증 파이프라인 검증 | 1단계 채증 성공률 95%, URL 입력 후 60초 이내 완료, 해시 검증 100%, AI 분류 F1 90%+ |
-| **Phase 2: 자동 채증** | 4~6주 | SMS 인증 자동화 및 2~3단계 채증 파이프라인 완성 | 3단계 채증 성공률 70%+, 소요 시간 10분 이내, SMS 인증 성공률 60%+, 월 500건 처리 |
+| **Phase 2A: UI/UX 화면 정의서** | 1주 | 14개 화면의 UI/UX 설계를 텍스트 기반 화면 정의서로 작성 (`docs/ui-specs/`) | 14개 화면 정의서 완성, PRD 요구사항(FR-UI-xxx) 100% 매핑, 컴포넌트 목록 및 데이터 바인딩 정의 완료 |
+| **Phase 2B: UI 코드 구현** | 3~5주 | 화면 정의서 기반 UI 코드 구현, SMS 인증 자동화 및 2~3단계 채증 파이프라인 완성 | 3단계 채증 성공률 70%+, 소요 시간 10분 이내, SMS 인증 성공률 60%+, 월 500건 처리 |
 | **Phase 3: AI 탐지** | 6~8주 | Claude few-shot 기반 자동 탐지 파이프라인 구축 | 월 500건 자동 탐지, AI 분류 Precision 95%+, 도메인 호핑 추적 60%+ |
 | **Phase 4: 고도화** | 4~6주 | Computer Use 폴백, MCP 아키텍처, SNS 모니터링 | 전체 채증 성공률 80%+, LLM 비용 $15/월 이하, 시스템 가동률 99.5%+ |
 
@@ -124,11 +125,22 @@
 | **SHA-256** | Secure Hash Algorithm 256-bit (FIPS 180-4) | 파일 무결성 검증을 위한 암호학적 해시 함수 |
 | **Chain of Custody** | 증거 관리 연속성 | 증거 수집부터 법정 제출까지 모든 접근/변경 이력을 추적하는 체계 |
 | **CDP** | Chrome DevTools Protocol | Chrome 브라우저의 원격 디버깅 프로토콜 |
-| **Crawlee** | Crawlee Framework | Apify에서 개발한 Node.js 웹 크롤링/스크래핑 프레임워크 |
+| **Scrapy** | Scrapy Framework | Python 기반 대규모 웹 크롤링/스크래핑 프레임워크 (51k+ GitHub stars) |
+| **scrapy-playwright** | scrapy-playwright | Scrapy에서 Playwright 브라우저를 통합 사용하기 위한 플러그인 |
+| **Crawlee** | Crawlee Framework | Apify에서 개발한 Node.js 웹 크롤링/스크래핑 프레임워크 (v1.0에서 Scrapy로 대체) |
 | **rebrowser-playwright** | rebrowser-playwright | Playwright의 드롭인 교체 라이브러리. Runtime.Enable CDP 유출을 패치하여 안티봇 탐지 우회 |
-| **fingerprint-suite** | fingerprint-suite (Apify) | 브라우저 핑거프린트(Canvas, WebGL, 폰트 등) 생성 및 주입 라이브러리 |
-| **got-scraping** | got-scraping (Apify) | TLS 핑거프린트를 실제 브라우저와 동일하게 모방하는 HTTP 클라이언트 |
-| **BullMQ** | BullMQ | Redis 기반 Node.js 작업 큐 라이브러리 |
+| **playwright-stealth** | playwright-stealth | Playwright 브라우저 자동화 탐지 우회 플러그인 (Python) |
+| **fingerprint-suite** | fingerprint-suite (Apify) | 브라우저 핑거프린트(Canvas, WebGL, 폰트 등) 생성 및 주입 라이브러리 (v1.0에서 playwright-stealth로 대체) |
+| **httpx** | httpx (Python) | Python 비동기 HTTP 클라이언트 |
+| **curl_cffi** | curl_cffi (Python) | TLS 핑거프린트를 실제 브라우저와 동일하게 모방하는 Python HTTP 클라이언트 |
+| **got-scraping** | got-scraping (Apify) | TLS 핑거프린트 모방 HTTP 클라이언트 (v1.0에서 httpx + curl_cffi로 대체) |
+| **Celery** | Celery | Redis/RabbitMQ 기반 Python 분산 작업 큐 프레임워크 |
+| **BullMQ** | BullMQ | Redis 기반 Node.js 작업 큐 라이브러리 (v1.0에서 Celery로 대체) |
+| **FastAPI** | FastAPI | Python 비동기 웹 프레임워크. 자동 OpenAPI 문서 생성, Pydantic v2 유효성 검증 |
+| **SQLAlchemy** | SQLAlchemy 2.x | Python ORM. 비동기 세션 지원, 유연한 쿼리 빌더 |
+| **Alembic** | Alembic | SQLAlchemy 기반 데이터베이스 마이그레이션 도구 |
+| **LangChain** | LangChain | LLM 애플리케이션 개발 프레임워크. 프롬프트 관리, 체인 구성, Claude API 호출 추상화 |
+| **LangGraph** | LangGraph | LangChain 기반 상태 머신 오케스트레이션 프레임워크. 복잡한 워크플로우 분기 로직 관리 |
 | **few-shot** | Few-Shot Learning | 소수의 예시만으로 AI 모델이 분류/생성 작업을 수행하는 학습 방식 |
 | **F1 스코어** | F1 Score | 정밀도(Precision)와 재현율(Recall)의 조화 평균. 분류 성능 지표 |
 | **CapSolver** | CapSolver | CAPTCHA 자동 풀이 API 서비스 (reCAPTCHA, hCaptcha, Turnstile 지원) |
@@ -164,12 +176,12 @@
 
 | 영역 | 기술 | 버전 | 용도 |
 |------|------|------|------|
-| API | Next.js Route Handlers | 15.5.3 | RESTful API, Server Actions |
-| 인증 | NextAuth.js (Auth.js) | v5 | JWT 인증, RBAC |
-| ORM | Prisma | 6.x | 타입 안전 쿼리, 마이그레이션 관리 |
+| API | FastAPI + Uvicorn | 0.110+ | RESTful API, 비동기 엔드포인트 |
+| 인증 | FastAPI Security (python-jose + passlib) | - | JWT Bearer Token 인증, RBAC |
+| ORM | SQLAlchemy + Alembic | 2.x | 타입 안전 쿼리, 마이그레이션 관리 |
 | 데이터베이스 | PostgreSQL | 16 | 주 데이터 저장소 |
-| 캐시/큐 | Redis + BullMQ | 7.x | 작업 큐, 세션 캐시, 실시간 상태 |
-| 파일 저장소 | S3 / MinIO | - | 증거 파일 저장 (스크린샷, HTML, WARC) |
+| 캐시/큐 | Redis + Celery | 7.x / 5.x | 작업 큐, 세션 캐시, 실시간 상태 |
+| 파일 저장소 | MinIO (boto3 SDK) | - | 증거 파일 저장 (스크린샷, HTML, WARC) |
 | 실시간 통신 | SSE / WebSocket | - | 채증 진행 상황, CAPTCHA 큐 업데이트 |
 
 ### 6.3 브라우저 자동화 및 크롤링
@@ -178,9 +190,9 @@
 |------|------|------|
 | 브라우저 자동화 (Tier 1) | rebrowser-playwright | CDP 유출 패치, 안티봇 우회 (~85% 커버) |
 | 브라우저 자동화 (Tier 2) | Nstbrowser ($30/월, 선택) | 안티디텍트 프로필, 고도 핑거프린트 격리 |
-| 크롤링 프레임워크 | Crawlee (PlaywrightCrawler) | 대규모 크롤링, 자동 스케일링, 프록시 로테이션 |
-| HTTP 클라이언트 | got-scraping | TLS 핑거프린트 모방, 경량 HTTP 요청 |
-| 핑거프린트 관리 | fingerprint-suite | Canvas/WebGL 핑거프린트 생성 및 주입 |
+| 크롤링 프레임워크 | Scrapy + scrapy-playwright | 대규모 크롤링, 비동기 스케일링, 프록시 로테이션 (Python 생태계) |
+| HTTP 클라이언트 | httpx + curl_cffi | TLS 핑거프린트 모방, 경량 HTTP 요청 (Python) |
+| 핑거프린트 관리 | playwright-stealth 또는 자체 핑거프린트 관리 | Canvas/WebGL 핑거프린트 생성 및 주입 |
 | 프록시 | IPRoyal / SOAX | 레지덴셜 프록시 로테이션 |
 
 ### 6.4 AI / LLM
@@ -191,6 +203,7 @@
 | 폼/CAPTCHA 탐지 | Claude Haiku 4.5 Vision | 폼 필드 자동 탐지, CAPTCHA 유형 식별 | ~$7.50/월 (2,500건) |
 | 보고서 생성 | Claude Sonnet 4.6 | 한국어 수사 보고서 자동 생성 | ~$0.045/건 |
 | Computer Use (폴백) | Claude Sonnet 4.6 Computer Use | Playwright 실패 시 폴백 (~10% 사이트) | ~$15~25/월 |
+| LLM 오케스트레이션 | LangChain + LangGraph | Claude API 호출, 프롬프트 관리, 체인 구성, 채증 워크플로우 상태 머신, CAPTCHA 분기 로직 | - |
 | ML 모델 (Phase 3) | XGBoost / KLUE-BERT / URLBERT | 1차 필터링, URL 패턴 분류 | ONNX Runtime 추론 |
 
 ### 6.5 SMS / CAPTCHA 외부 서비스
@@ -207,10 +220,10 @@
 
 | 영역 | 기술 | 용도 |
 |------|------|------|
-| 해시 | SHA-256 (Node.js crypto) | 파일 무결성 검증 (FIPS 180-4) |
+| 해시 | SHA-256 (Python hashlib, FIPS 180-4) | 파일 무결성 검증 |
 | 타임스탬프 1 | OpenTimestamps | 비트코인 블록체인 기반 무료 타임스탬프 |
 | 타임스탬프 2 | RFC 3161 (자체 경량 TSA 클라이언트) | PKI 기반 타임스탬프 이중화 |
-| 웹 아카이브 | warcio.js (WARC, ISO 28500) | HTTP 트래픽 원본 보존 |
+| 웹 아카이브 | warcio (Python, WARC, ISO 28500) | HTTP 트래픽 원본 보존 |
 | HTML 보존 | SingleFile CLI | 단일 HTML 파일 생성 (오프라인 열람) |
 
 ---
@@ -228,6 +241,11 @@
 | 5 | **증거 무결성** | OpenTimestamps 즉시 도입 + RFC 3161 자체 구현으로 이중화 | OpenTimestamps: 무료, 탈중앙화, 10년 후 검증 가능. RFC 3161: 기존 법률 체계에서 넓은 법적 인정 기반 | 확정 |
 | 6 | **CAPTCHA 솔버** | CapSolver/2Captcha API 사용 (오픈소스 자체 구축 비채택) | 실제 테스트 결과 CAPTCHA 출현 빈도 극히 낮아 월 ~$2 비용. 오픈소스 구축 시 40시간+ 필요, ROI 없음 | 확정 |
 | 7 | **Computer Use** | 폴백 전용으로만 사용. 기본 자동화는 Playwright | 액션당 ~5초 (Playwright 대비 50x 느림), 액션당 ~$0.30~0.50 (3000x 비쌈). 미지 사이트 ~10%에서만 호출 | 확정 |
+| 8 | **백엔드 프레임워크** | FastAPI (Python) 채택. Next.js Route Handlers 대체 | 크롤링/브라우저 자동화/AI 파이프라인이 Python 생태계 중심이므로, 백엔드도 Python으로 통일하여 단일 런타임 운영. FastAPI의 비동기 성능, 자동 OpenAPI 문서 생성, Pydantic v2 유효성 검증 활용 | 확정 |
+| 9 | **ORM/마이그레이션** | SQLAlchemy 2.x + Alembic 채택. Prisma 대체 | Python 네이티브 ORM으로 FastAPI와 자연스러운 통합. 비동기 세션 지원, 유연한 쿼리 빌더, 성숙한 마이그레이션 도구(Alembic) | 확정 |
+| 10 | **파일 저장소** | MinIO (boto3 SDK) 확정 | S3 호환 API를 제공하는 오픈소스 오브젝트 스토리지. 온프레미스 배포 가능, WORM 모드 지원으로 증거 변조 방지에 적합 | 확정 |
+| 11 | **LLM 오케스트레이션** | LangChain + LangGraph 채택 | LangChain: Claude API 호출 추상화, 프롬프트 관리, 체인 구성. LangGraph: 채증 워크플로우를 상태 머신으로 모델링, CAPTCHA 분기/SMS 인증 분기 등 복잡한 조건부 로직 관리 | 확정 |
+| 12 | **크롤링 프레임워크** | Scrapy + scrapy-playwright 채택. Crawlee 대체 | Python 생태계 통일에 따른 전환. Scrapy는 성숙한 크롤링 프레임워크(51k+ GitHub stars)로 비동기 I/O, 미들웨어 파이프라인, 프록시 로테이션 내장. scrapy-playwright 플러그인으로 Playwright 브라우저 자동화 통합 | 확정 |
 
 ---
 
@@ -243,7 +261,7 @@
 | **04 증거 무결성** | US-D1~D3 | FR-EC-003~006 (캡처 결과) | FR-SMS-030~031 (법적 로깅) | - | | | | |
 | **05 탐지 엔진** | US-A1,A2 | | | | - | | | FR-DM-001 (sites) |
 | **06 대시보드/UI** | US-A3~A7, US-B1~B4, US-C1~C3, US-D1~D3 | FR-EC-025,032 (모니터링/CAPTCHA 큐) | FR-SMS-018~021 (비용 대시보드) | FR-EV-003,009,015,016 (검증/보고서) | FR-DE-013,030 (검토 큐/모니터링) | - | FR-API 전체 (데이터 페칭) | |
-| **07 API 명세** | | FR-EC 전체 (채증 실행 API) | FR-SMS 전체 (SMS 설정 API) | FR-EV 전체 (증거 관리 API) | FR-DE 전체 (탐지 실행 API) | FR-UI 전체 (프론트엔드 호출) | - | FR-DM 전체 (Prisma 스키마) |
+| **07 API 명세** | | FR-EC 전체 (채증 실행 API) | FR-SMS 전체 (SMS 설정 API) | FR-EV 전체 (증거 관리 API) | FR-DE 전체 (탐지 실행 API) | FR-UI 전체 (프론트엔드 호출) | - | FR-DM 전체 (SQLAlchemy 모델) |
 | **08 데이터 모델** | | FR-EC-024 (메타데이터) | FR-SMS 데이터 모델 | FR-EV-010~012 (감사 로그) | FR-DE-029 (탐지 결과 저장) | | FR-API 전체 (ORM 매핑) | - |
 
 ### 핵심 의존성 흐름
@@ -322,6 +340,8 @@
 | 버전 | 날짜 | 작성자 | 변경 내용 |
 |------|------|--------|----------|
 | 1.0 | 2026-03-14 | 기획팀 | PRD 통합 문서 초안 완료 (8개 섹션 작성 완료) |
+| 1.1 | 2026-03-15 | 기획팀 | 기술 스택 전환: 백엔드 FastAPI/Python, ORM SQLAlchemy+Alembic, 큐 Celery, 크롤링 Scrapy+scrapy-playwright, LangChain/LangGraph 추가 |
+| 1.2 | 2026-03-15 | 기획팀 | Phase 2를 Phase 2A(UI/UX 화면 정의서 작성, 1주)와 Phase 2B(UI 코드 구현, 3~5주)로 분리. 화면 정의서 기반 구현 프로세스 공식화 |
 
 ---
 

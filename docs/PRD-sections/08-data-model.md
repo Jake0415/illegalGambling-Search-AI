@@ -8,19 +8,19 @@
 
 ## 개요
 
-본 섹션은 불법 도박 사이트 자동 검색/채증 시스템의 전체 데이터베이스 스키마를 정의한다. PostgreSQL 16을 주 데이터베이스로, Prisma ORM을 통해 스키마를 관리하며, Redis 7(BullMQ)을 캐시/큐 저장소로, S3/MinIO를 파일 저장소로 사용한다.
+본 섹션은 불법 도박 사이트 자동 검색/채증 시스템의 전체 데이터베이스 스키마를 정의한다. PostgreSQL 16을 주 데이터베이스로, SQLAlchemy 2.x ORM으로 스키마를 관리하며, Alembic으로 마이그레이션을 관리한다. Redis 7(Celery)을 캐시/큐 저장소로, MinIO(boto3 SDK)를 파일 저장소로 사용한다.
 
 ### 설계 원칙
 
 | 원칙 | 설명 |
 |------|------|
 | **UUID v7 기본 키** | 모든 테이블의 PK는 UUID v7을 사용한다. 시간순 정렬이 가능하고 분산 환경에서 충돌이 없다. |
-| **네이밍 컨벤션** | DB 컬럼명은 `snake_case`, Prisma 모델 필드명은 `camelCase`로 매핑한다 (`@map`, `@@map` 어노테이션 사용). |
+| **네이밍 컨벤션** | DB 컬럼명과 SQLAlchemy 모델 필드명 모두 `snake_case`를 사용한다. 필요 시 `Column(name="custom_name")` 패턴으로 커스텀 매핑한다. |
 | **소프트 삭제 패턴** | 데이터 삭제 시 물리적 삭제 대신 `deleted_at` 필드에 삭제 시각을 기록한다. 증거 관련 데이터는 법적 보존 의무에 따라 소프트 삭제만 허용한다. |
 | **감사 필드** | 모든 테이블에 `created_at`, `updated_at` 필드를 포함한다. 변경 이력 추적이 필요한 테이블에는 `deleted_at`을 추가한다. |
-| **JSON 필드 활용** | 구조가 유동적인 부가 정보(WHOIS, DNS, 브라우저 핑거프린트 등)는 `Json` 타입으로 저장하여 스키마 유연성을 확보한다. |
-| **Enum 타입 정의** | 상태값, 카테고리 등 고정 선택지는 Prisma `enum`으로 정의하여 타입 안전성을 보장한다. |
-| **관계 무결성** | 외래 키 제약조건을 적용하고, `onDelete` 정책을 명시한다. 증거 데이터는 `RESTRICT`, 부가 데이터는 `CASCADE` 또는 `SET NULL`을 적용한다. |
+| **JSON 필드 활용** | 구조가 유동적인 부가 정보(WHOIS, DNS, 브라우저 핑거프린트 등)는 PostgreSQL `JSONB` 타입(`Column(JSONB)`)으로 저장하여 스키마 유연성을 확보한다. |
+| **Enum 타입 정의** | 상태값, 카테고리 등 고정 선택지는 Python `enum.Enum` + SQLAlchemy `Enum` 타입으로 정의하여 타입 안전성을 보장한다. |
+| **관계 무결성** | 외래 키 제약조건을 적용하고, `ForeignKey(ondelete=...)` 정책을 명시한다. 증거 데이터는 `RESTRICT`, 부가 데이터는 `CASCADE` 또는 `SET NULL`을 적용한다. |
 | **인덱스 전략** | 자주 조회되는 컬럼에 단일/복합 인덱스를 정의하고, 대용량 테이블은 날짜 기반 파티셔닝을 적용한다. |
 
 ### 기술 스택
@@ -28,12 +28,48 @@
 | 구성 요소 | 기술 | 버전 | 용도 |
 |-----------|------|------|------|
 | 데이터베이스 | PostgreSQL | 16 | 주 데이터 저장소 |
-| ORM | Prisma | 6.x | 스키마 관리, 마이그레이션, 타입 안전 쿼리 |
-| 캐시/큐 | Redis | 7.x | BullMQ 작업 큐, 세션 캐시, 실시간 상태 관리 |
-| 파일 저장소 | S3/MinIO | - | 증거 파일(스크린샷, HTML, WARC) 저장 |
-| 인증 | NextAuth.js | v5 | 사용자 인증, 세션 관리 |
+| ORM | SQLAlchemy + Alembic | 2.x | 스키마 관리, 마이그레이션, 비동기 세션 지원 |
+| 캐시/큐 | Redis | 7.x | Celery 작업 큐, 세션 캐시, 실시간 상태 관리 |
+| 파일 저장소 | MinIO (boto3 SDK) | - | 증거 파일(스크린샷, HTML, WARC) 저장 |
+| 인증 | FastAPI JWT (python-jose) | - | 사용자 인증, 토큰 관리 |
 
-### Prisma 스키마 공통 패턴
+### SQLAlchemy 모델 공통 패턴
+
+> 아래 Prisma 스키마는 참조용이며, 실제 구현은 SQLAlchemy 모델로 전환 예정이다.
+
+```python
+# app/models/base.py -- SQLAlchemy 공통 설정
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import DateTime, func
+from uuid_extensions import uuid7
+from datetime import datetime
+from typing import Optional
+
+class Base(DeclarativeBase):
+    pass
+
+class TimestampMixin:
+    """모든 모델의 공통 감사 필드"""
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+# 소프트 삭제 패턴 예시
+class Example(TimestampMixin, Base):
+    __tablename__ = "examples"
+
+    id: Mapped[str] = mapped_column(primary_key=True, default=lambda: str(uuid7()))
+    # ... 필드들
+```
+
+<details>
+<summary>참조: 원본 Prisma 스키마 (마이그레이션 참고용)</summary>
 
 ```prisma
 // prisma/schema.prisma 공통 설정
@@ -45,9 +81,6 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
-
-// UUID v7 생성 함수 (PostgreSQL 확장 또는 애플리케이션 레벨)
-// Prisma에서 @default(uuid(7)) 또는 애플리케이션에서 uuidv7() 호출
 
 // 소프트 삭제 패턴 예시
 model Example {
@@ -61,11 +94,13 @@ model Example {
 }
 ```
 
+</details>
+
 ---
 
 ## A. 핵심 엔티티 (Phase 1)
 
-### Prisma 스키마: sites
+### 스키마: sites
 
 ```prisma
 enum SiteStatus {
@@ -119,9 +154,9 @@ model Site {
 
 | ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
 |----|------|------|---------|-------|----------|---------------|
-| **FR-DM-001** | sites 엔티티 정의 | 불법 도박 사이트의 기본 정보를 저장하는 핵심 테이블을 정의한다. 사이트 URL, 도메인, 운영 상태, 카테고리 분류, AI 신뢰도 점수, 최초 탐지 시각, WHOIS/DNS 부가 정보를 포함한다. 모든 채증, 탐지, 분류 결과의 기준 엔티티로, 시스템 전반의 데이터 관계 중심점이 된다. | P0 | Phase 1 | 1. `id`는 UUID v7 형식의 PK이다 2. `url`은 유니크 제약조건이 적용되어 동일 URL 중복 등록이 불가하다 3. `domain`은 URL에서 추출한 도메인명이며 인덱스가 적용된다 4. `status`는 `ACTIVE`, `INACTIVE`, `CLOSED`, `MONITORING` 4가지 enum 값만 허용된다 5. `category`는 `SPORTS_BETTING`, `HORSE_RACING`, `CASINO`, `OTHER_GAMBLING`, `NON_GAMBLING` 5가지 enum 값만 허용되며 nullable이다 6. `confidence_score`는 0.0~1.0 범위의 부동소수점이며 AI 분류 신뢰도를 저장한다 7. `tags`, `whois_data`, `dns_records`는 JSON 타입으로 구조 유연성을 확보한다 8. `deleted_at`이 null이 아닌 레코드는 조회 시 기본적으로 제외된다 (소프트 삭제) 9. `created_at`은 레코드 생성 시 자동 설정, `updated_at`은 수정 시 자동 갱신된다 | PostgreSQL 16, Prisma `@unique`, `@index`, `@map("snake_case")` 어노테이션, `Json` 타입으로 WHOIS/DNS 저장. URL 정규화는 `normalize-url` 라이브러리로 저장 전 수행. |
+| **FR-DM-001** | sites 엔티티 정의 | 불법 도박 사이트의 기본 정보를 저장하는 핵심 테이블을 정의한다. 사이트 URL, 도메인, 운영 상태, 카테고리 분류, AI 신뢰도 점수, 최초 탐지 시각, WHOIS/DNS 부가 정보를 포함한다. 모든 채증, 탐지, 분류 결과의 기준 엔티티로, 시스템 전반의 데이터 관계 중심점이 된다. | P0 | Phase 1 | 1. `id`는 UUID v7 형식의 PK이다 2. `url`은 유니크 제약조건이 적용되어 동일 URL 중복 등록이 불가하다 3. `domain`은 URL에서 추출한 도메인명이며 인덱스가 적용된다 4. `status`는 `ACTIVE`, `INACTIVE`, `CLOSED`, `MONITORING` 4가지 enum 값만 허용된다 5. `category`는 `SPORTS_BETTING`, `HORSE_RACING`, `CASINO`, `OTHER_GAMBLING`, `NON_GAMBLING` 5가지 enum 값만 허용되며 nullable이다 6. `confidence_score`는 0.0~1.0 범위의 부동소수점이며 AI 분류 신뢰도를 저장한다 7. `tags`, `whois_data`, `dns_records`는 JSON 타입으로 구조 유연성을 확보한다 8. `deleted_at`이 null이 아닌 레코드는 조회 시 기본적으로 제외된다 (소프트 삭제) 9. `created_at`은 레코드 생성 시 자동 설정, `updated_at`은 수정 시 자동 갱신된다 | PostgreSQL 16, SQLAlchemy `UniqueConstraint`, `Index`, `Column(JSONB)` 타입으로 WHOIS/DNS 저장. URL 정규화는 Python `urllib.parse` + 커스텀 정규화 로직으로 저장 전 수행. |
 
-### Prisma 스키마: investigations
+### 스키마: investigations
 
 ```prisma
 enum InvestigationStatus {
@@ -169,9 +204,9 @@ model Investigation {
 
 | ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
 |----|------|------|---------|-------|----------|---------------|
-| **FR-DM-002** | investigations 엔티티 정의 | 채증 세션(조사 작업 단위)을 관리하는 테이블을 정의한다. 하나의 사이트에 대해 여러 채증 세션이 실행될 수 있으며, 각 세션은 1~3단계 파이프라인을 순차 진행한다. 세션 상태, 현재 단계, 시작/완료 시각, 에러 정보, 재시도 횟수, 프록시/핑거프린트 정보를 기록한다. BullMQ 작업 큐와 연동하여 스케줄링 및 병렬 처리를 지원한다. | P0 | Phase 1 | 1. `site_id`는 sites 테이블의 FK이며 RESTRICT 삭제 정책이 적용된다 (사이트가 삭제되면 채증 세션도 보존) 2. `status`는 `QUEUED`, `IN_PROGRESS`, `STAGE_1_COMPLETE`, `STAGE_2_COMPLETE`, `STAGE_3_COMPLETE`, `COMPLETED`, `FAILED`, `CANCELLED` 8가지 enum 값을 지원한다 3. `current_stage`는 1, 2, 3 값만 허용되며 현재 진행 중인 채증 단계를 나타낸다 4. `retry_count`는 0 이상의 정수이며 최대 3회 재시도를 추적한다 5. `browser_fingerprint`는 JSON으로 viewport, 언어, 타임존, User-Agent 등을 저장한다 6. `created_by`는 users 테이블의 FK이며 수동 채증 요청 시 요청자를 기록한다 7. `status`와 `scheduled_at`에 복합 인덱스가 적용되어 큐 폴링 성능을 보장한다 | Prisma relation (`@relation`), BullMQ 작업 ID와 investigation ID 매핑, 상태 머신 패턴으로 status 전이 관리. `browser_fingerprint`는 `fingerprint-suite` 생성 결과를 JSON으로 저장. |
+| **FR-DM-002** | investigations 엔티티 정의 | 채증 세션(조사 작업 단위)을 관리하는 테이블을 정의한다. 하나의 사이트에 대해 여러 채증 세션이 실행될 수 있으며, 각 세션은 1~3단계 파이프라인을 순차 진행한다. 세션 상태, 현재 단계, 시작/완료 시각, 에러 정보, 재시도 횟수, 프록시/핑거프린트 정보를 기록한다. BullMQ 작업 큐와 연동하여 스케줄링 및 병렬 처리를 지원한다. | P0 | Phase 1 | 1. `site_id`는 sites 테이블의 FK이며 RESTRICT 삭제 정책이 적용된다 (사이트가 삭제되면 채증 세션도 보존) 2. `status`는 `QUEUED`, `IN_PROGRESS`, `STAGE_1_COMPLETE`, `STAGE_2_COMPLETE`, `STAGE_3_COMPLETE`, `COMPLETED`, `FAILED`, `CANCELLED` 8가지 enum 값을 지원한다 3. `current_stage`는 1, 2, 3 값만 허용되며 현재 진행 중인 채증 단계를 나타낸다 4. `retry_count`는 0 이상의 정수이며 최대 3회 재시도를 추적한다 5. `browser_fingerprint`는 JSON으로 viewport, 언어, 타임존, User-Agent 등을 저장한다 6. `created_by`는 users 테이블의 FK이며 수동 채증 요청 시 요청자를 기록한다 7. `status`와 `scheduled_at`에 복합 인덱스가 적용되어 큐 폴링 성능을 보장한다 | SQLAlchemy `relationship()`, Celery 작업 ID와 investigation ID 매핑, 상태 머신 패턴으로 status 전이 관리. `browser_fingerprint`는 playwright-stealth 핑거프린트 결과를 JSONB로 저장. |
 
-### Prisma 스키마: evidence_files
+### 스키마: evidence_files
 
 ```prisma
 enum EvidenceFileType {
@@ -211,13 +246,13 @@ model EvidenceFile {
 
 | ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
 |----|------|------|---------|-------|----------|---------------|
-| **FR-DM-003** | evidence_files 엔티티 정의 | 채증 과정에서 생성되는 모든 증거 파일의 메타데이터를 관리하는 테이블을 정의한다. 스크린샷, HTML, WARC, 네트워크 로그, WHOIS, 메타데이터, SingleFile 등 파일 유형별로 기록하며, 각 파일의 S3/MinIO 저장 경로, 파일 크기, MIME 타입, SHA-256 해시값을 저장한다. 실제 파일은 S3/MinIO에 저장하고 DB에는 경로와 메타정보만 보관한다. | P0 | Phase 1 | 1. `investigation_id`는 investigations 테이블의 FK이며 RESTRICT 삭제 정책이 적용된다 2. `file_type`은 `SCREENSHOT`, `HTML`, `WARC`, `NETWORK_LOG`, `WHOIS`, `METADATA`, `SINGLEFILE` 7가지 enum 값을 지원한다 3. `stage`는 1, 2, 3 값으로 해당 파일이 어떤 채증 단계에서 생성되었는지 기록한다 4. `file_path`는 S3/MinIO 내 객체 키(예: `evidence/{siteId}/{investigationId}/stage-1/screenshot.png`)이다 5. `sha256_hash`는 64자 hex 문자열이며 파일 생성 즉시 계산하여 저장한다 6. `file_size`는 BigInt로 대용량 WARC 파일도 수용한다 7. `sha256_hash`에 인덱스가 적용되어 해시 기반 무결성 검증이 빠르게 수행된다 8. `created_at`만 존재하고 `updated_at`은 없다 (증거 파일 메타데이터는 불변) | S3/MinIO SDK (`@aws-sdk/client-s3`), Node.js `crypto.createHash('sha256')`. 파일 경로 규칙: `evidence/{siteId}/{investigationId}/stage-{n}/{filename}`. MIME 타입은 `mime-types` 라이브러리로 자동 탐지. |
+| **FR-DM-003** | evidence_files 엔티티 정의 | 채증 과정에서 생성되는 모든 증거 파일의 메타데이터를 관리하는 테이블을 정의한다. 스크린샷, HTML, WARC, 네트워크 로그, WHOIS, 메타데이터, SingleFile 등 파일 유형별로 기록하며, 각 파일의 S3/MinIO 저장 경로, 파일 크기, MIME 타입, SHA-256 해시값을 저장한다. 실제 파일은 S3/MinIO에 저장하고 DB에는 경로와 메타정보만 보관한다. | P0 | Phase 1 | 1. `investigation_id`는 investigations 테이블의 FK이며 RESTRICT 삭제 정책이 적용된다 2. `file_type`은 `SCREENSHOT`, `HTML`, `WARC`, `NETWORK_LOG`, `WHOIS`, `METADATA`, `SINGLEFILE` 7가지 enum 값을 지원한다 3. `stage`는 1, 2, 3 값으로 해당 파일이 어떤 채증 단계에서 생성되었는지 기록한다 4. `file_path`는 S3/MinIO 내 객체 키(예: `evidence/{siteId}/{investigationId}/stage-1/screenshot.png`)이다 5. `sha256_hash`는 64자 hex 문자열이며 파일 생성 즉시 계산하여 저장한다 6. `file_size`는 BigInt로 대용량 WARC 파일도 수용한다 7. `sha256_hash`에 인덱스가 적용되어 해시 기반 무결성 검증이 빠르게 수행된다 8. `created_at`만 존재하고 `updated_at`은 없다 (증거 파일 메타데이터는 불변) | MinIO SDK (boto3 `s3` client), Python `hashlib.sha256()`. 파일 경로 규칙: `evidence/{siteId}/{investigationId}/stage-{n}/{filename}`. MIME 타입은 Python `mimetypes` 모듈로 자동 탐지. |
 
 ---
 
 ## B. 증거 무결성 (Phase 1-2)
 
-### Prisma 스키마: hash_records, timestamps
+### 스키마: hash_records, timestamps
 
 ```prisma
 enum HashAlgorithm {
@@ -275,10 +310,10 @@ model Timestamp {
 
 | ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
 |----|------|------|---------|-------|----------|---------------|
-| **FR-DM-004** | hash_records 엔티티 정의 | 증거 파일의 해시 검증 이력을 관리하는 테이블을 정의한다. 증거 파일 생성 시 SHA-256 해시를 계산하여 기록하고, 이후 무결성 검증 시 재계산한 해시와 비교한 결과를 저장한다. 해시 불일치 시 `INVALID` 상태로 표시하여 증거 위변조를 탐지한다. | P0 | Phase 1 | 1. `evidence_file_id`는 evidence_files 테이블의 FK이며 RESTRICT 삭제 정책이 적용된다 2. `algorithm`은 현재 `SHA256`만 지원하며 향후 알고리즘 확장을 위해 enum으로 정의한다 3. `hash_value`는 64자 hex 문자열(SHA-256 결과)이다 4. `verification_status`는 `PENDING`(미검증), `VALID`(검증 통과), `INVALID`(해시 불일치) 3가지 상태를 지원한다 5. `verified_at`은 검증 수행 시각을 기록하며, 미검증 시 null이다 6. 동일 증거 파일에 대해 여러 검증 이력이 기록될 수 있다 (1:N 관계) 7. `hash_value`에 인덱스가 적용되어 해시 기반 조회가 가능하다 | Node.js `crypto.createHash('sha256')`, `fs.createReadStream()` 스트리밍 해시 계산. 검증 API: 파일을 S3에서 읽어 해시 재계산 후 DB 기록값과 비교. |
-| **FR-DM-005** | timestamps 엔티티 정의 | 증거 파일에 적용된 타임스탬프 정보를 관리하는 테이블을 정의한다. OpenTimestamps(비트코인 블록체인)와 RFC 3161(PKI TSA) 두 가지 타임스탬프 유형을 지원하며, 각 타임스탬프의 증명 파일(.ots 또는 .tsr) 경로와 검증 상태를 저장한다. 이중 타임스탬프를 통해 증거의 존재 시점을 법적으로 입증한다. | P0 | Phase 1 (OTS) / Phase 2 (RFC 3161) | 1. `evidence_file_id`는 evidence_files 테이블의 FK이며 RESTRICT 삭제 정책이 적용된다 2. `type`은 `OPENTIMESTAMPS`와 `RFC3161` 2가지 enum 값을 지원한다 3. `timestamp_value`는 타임스탬프가 증명하는 시각(UTC)이다 4. `proof_file_path`는 S3/MinIO 내 증명 파일 경로이다 (`.ots` 또는 `.tsr`/`.tst` 파일) 5. `verification_status`는 `PENDING`(확인 대기), `VALID`(검증 통과), `INVALID`(검증 실패)이다 6. OpenTimestamps의 경우 비트코인 블록 확인까지 1~2시간 소요되므로 초기에는 `PENDING`이다 7. 하나의 증거 파일에 OTS와 RFC3161 타임스탬프가 각각 생성될 수 있다 | `opentimestamps` CLI/JS 클라이언트, 자체 구현 RFC 3161 TSA 클라이언트. OTS 캘린더 서버: `a.pool.opentimestamps.org`. RFC 3161 TSA 서버: FreeTSA.org (1순위), DigiCert (폴백). |
+| **FR-DM-004** | hash_records 엔티티 정의 | 증거 파일의 해시 검증 이력을 관리하는 테이블을 정의한다. 증거 파일 생성 시 SHA-256 해시를 계산하여 기록하고, 이후 무결성 검증 시 재계산한 해시와 비교한 결과를 저장한다. 해시 불일치 시 `INVALID` 상태로 표시하여 증거 위변조를 탐지한다. | P0 | Phase 1 | 1. `evidence_file_id`는 evidence_files 테이블의 FK이며 RESTRICT 삭제 정책이 적용된다 2. `algorithm`은 현재 `SHA256`만 지원하며 향후 알고리즘 확장을 위해 enum으로 정의한다 3. `hash_value`는 64자 hex 문자열(SHA-256 결과)이다 4. `verification_status`는 `PENDING`(미검증), `VALID`(검증 통과), `INVALID`(해시 불일치) 3가지 상태를 지원한다 5. `verified_at`은 검증 수행 시각을 기록하며, 미검증 시 null이다 6. 동일 증거 파일에 대해 여러 검증 이력이 기록될 수 있다 (1:N 관계) 7. `hash_value`에 인덱스가 적용되어 해시 기반 조회가 가능하다 | Python `hashlib.sha256()`, 스트리밍 해시 계산. 검증 API: 파일을 MinIO에서 읽어 해시 재계산 후 DB 기록값과 비교. |
+| **FR-DM-005** | timestamps 엔티티 정의 | 증거 파일에 적용된 타임스탬프 정보를 관리하는 테이블을 정의한다. OpenTimestamps(비트코인 블록체인)와 RFC 3161(PKI TSA) 두 가지 타임스탬프 유형을 지원하며, 각 타임스탬프의 증명 파일(.ots 또는 .tsr) 경로와 검증 상태를 저장한다. 이중 타임스탬프를 통해 증거의 존재 시점을 법적으로 입증한다. | P0 | Phase 1 (OTS) / Phase 2 (RFC 3161) | 1. `evidence_file_id`는 evidence_files 테이블의 FK이며 RESTRICT 삭제 정책이 적용된다 2. `type`은 `OPENTIMESTAMPS`와 `RFC3161` 2가지 enum 값을 지원한다 3. `timestamp_value`는 타임스탬프가 증명하는 시각(UTC)이다 4. `proof_file_path`는 S3/MinIO 내 증명 파일 경로이다 (`.ots` 또는 `.tsr`/`.tst` 파일) 5. `verification_status`는 `PENDING`(확인 대기), `VALID`(검증 통과), `INVALID`(검증 실패)이다 6. OpenTimestamps의 경우 비트코인 블록 확인까지 1~2시간 소요되므로 초기에는 `PENDING`이다 7. 하나의 증거 파일에 OTS와 RFC3161 타임스탬프가 각각 생성될 수 있다 | `opentimestamps` CLI/Python 클라이언트, 자체 구현 RFC 3161 TSA 클라이언트. OTS 캘린더 서버: `a.pool.opentimestamps.org`. RFC 3161 TSA 서버: FreeTSA.org (1순위), DigiCert (폴백). |
 
-### Prisma 스키마: audit_logs
+### 스키마: audit_logs
 
 ```prisma
 enum AuditAction {
@@ -321,7 +356,7 @@ model AuditLog {
 
 ## C. SMS 인증 (Phase 2)
 
-### Prisma 스키마: sms_numbers, sms_messages
+### 스키마: sms_numbers, sms_messages
 
 ```prisma
 enum SmsProvider {
@@ -388,7 +423,7 @@ model SmsMessage {
 
 ## D. CAPTCHA/수동 개입 (Phase 2)
 
-### Prisma 스키마: manual_intervention_queue
+### 스키마: manual_intervention_queue
 
 ```prisma
 enum InterventionType {
@@ -431,13 +466,13 @@ model ManualInterventionQueue {
 
 | ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
 |----|------|------|---------|-------|----------|---------------|
-| **FR-DM-009** | manual_intervention_queue 엔티티 정의 | 자동 채증 과정에서 CAPTCHA, OTP, 미지 폼 등 자동화가 실패한 경우 담당자의 수동 개입을 요청하고 관리하는 큐 테이블을 정의한다. CDP WebSocket 세션 URL을 통해 원격 브라우저에 접속하여 수동 풀이가 가능하며, 대기/진행/해결/만료 상태를 추적한다. Slack/웹 푸시 알림과 연동하여 5분 이내 응답을 목표로 한다. | P1 | Phase 2 | 1. `investigation_id`는 investigations 테이블의 FK이며 RESTRICT 삭제 정책이 적용된다 2. `type`은 `CAPTCHA`(CAPTCHA 풀이 필요), `OTP`(SMS OTP 수동 입력 필요), `UNKNOWN_FORM`(미지 폼 탐지 실패) 3가지 enum 값을 지원한다 3. `status`는 `PENDING`(대기), `IN_PROGRESS`(담당자 작업 중), `RESOLVED`(해결 완료), `EXPIRED`(타임아웃 만료) 4가지 상태를 지원한다 4. `cdp_session_url`은 `ws://host:9222/devtools/page/{id}` 형식의 CDP WebSocket URL이다 5. `screenshot_path`는 수동 개입 요청 시점의 브라우저 스크린샷 S3 경로이다 6. `assigned_to`는 수동 개입을 담당하는 사용자의 FK이며, 미할당 시 null이다 7. `status + created_at` 복합 인덱스로 대기 시간 기준 정렬이 가능하다 8. `PENDING` 상태에서 5분 경과 시 자동으로 `EXPIRED`로 전환된다 (BullMQ 딜레이 작업) 9. 상태 변경 시 audit_logs에 자동 기록된다 | CDP `--remote-debugging-port=9222`, WebSocket 프록시를 통한 브라우저 스트리밍. Slack Incoming Webhook + Web Push API로 알림 발송. `status` 전이: PENDING -> IN_PROGRESS -> RESOLVED 또는 PENDING -> EXPIRED. |
+| **FR-DM-009** | manual_intervention_queue 엔티티 정의 | 자동 채증 과정에서 CAPTCHA, OTP, 미지 폼 등 자동화가 실패한 경우 담당자의 수동 개입을 요청하고 관리하는 큐 테이블을 정의한다. CDP WebSocket 세션 URL을 통해 원격 브라우저에 접속하여 수동 풀이가 가능하며, 대기/진행/해결/만료 상태를 추적한다. Slack/웹 푸시 알림과 연동하여 5분 이내 응답을 목표로 한다. | P1 | Phase 2 | 1. `investigation_id`는 investigations 테이블의 FK이며 RESTRICT 삭제 정책이 적용된다 2. `type`은 `CAPTCHA`(CAPTCHA 풀이 필요), `OTP`(SMS OTP 수동 입력 필요), `UNKNOWN_FORM`(미지 폼 탐지 실패) 3가지 enum 값을 지원한다 3. `status`는 `PENDING`(대기), `IN_PROGRESS`(담당자 작업 중), `RESOLVED`(해결 완료), `EXPIRED`(타임아웃 만료) 4가지 상태를 지원한다 4. `cdp_session_url`은 `ws://host:9222/devtools/page/{id}` 형식의 CDP WebSocket URL이다 5. `screenshot_path`는 수동 개입 요청 시점의 브라우저 스크린샷 S3 경로이다 6. `assigned_to`는 수동 개입을 담당하는 사용자의 FK이며, 미할당 시 null이다 7. `status + created_at` 복합 인덱스로 대기 시간 기준 정렬이 가능하다 8. `PENDING` 상태에서 5분 경과 시 자동으로 `EXPIRED`로 전환된다 (Celery 딜레이 작업) 9. 상태 변경 시 audit_logs에 자동 기록된다 | CDP `--remote-debugging-port=9222`, WebSocket 프록시를 통한 브라우저 스트리밍. Slack Incoming Webhook + Web Push API로 알림 발송. `status` 전이: PENDING -> IN_PROGRESS -> RESOLVED 또는 PENDING -> EXPIRED. |
 
 ---
 
 ## E. 탐지 엔진 (Phase 2-3)
 
-### Prisma 스키마: keywords, detection_results, classification_results
+### 스키마: keywords, detection_results, classification_results
 
 ```prisma
 model Keyword {
@@ -535,7 +570,7 @@ model ClassificationResult {
 
 ## F. 도메인 모니터링 (Phase 2)
 
-### Prisma 스키마: domain_history, domain_clusters
+### 스키마: domain_history, domain_clusters
 
 ```prisma
 enum DomainStatus {
@@ -602,7 +637,7 @@ model SiteDomainCluster {
 
 ## G. 사용자 관리 (Phase 1)
 
-### Prisma 스키마: users, sessions (NextAuth.js v5 호환)
+### 스키마: users, sessions (FastAPI JWT 인증)
 
 ```prisma
 enum UserRole {
@@ -684,14 +719,14 @@ model VerificationToken {
 
 | ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
 |----|------|------|---------|-------|----------|---------------|
-| **FR-DM-015** | users 엔티티 정의 | 시스템 사용자를 관리하는 테이블을 정의한다. NextAuth.js v5와 호환되는 스키마 구조를 따르되, 시스템 고유 필드(`role`, `is_active`, `password_hash`, `last_login_at`)를 추가한다. 역할 기반 접근 제어(RBAC)를 위해 ADMIN, OPERATOR, INVESTIGATOR, VIEWER 4가지 역할을 지원한다. | P0 | Phase 1 | 1. `id`는 UUID v7 형식의 PK이다 2. `email`은 유니크 제약조건이 적용되며 로그인 식별자로 사용된다 3. `password_hash`는 bcrypt 해시(cost factor 12)로 저장된다. 평문 비밀번호는 저장하지 않는다 4. `role`은 `ADMIN`(전체 관리), `OPERATOR`(시스템 운영/채증 관리), `INVESTIGATOR`(채증 실행/조회), `VIEWER`(조회 전용) 4가지 enum 값을 지원한다 5. `is_active`가 false인 사용자는 로그인이 차단된다 6. `last_login_at`은 최종 로그인 시각을 기록한다 7. NextAuth.js v5 Prisma Adapter와 호환되는 필드 구조(`email_verified`, `image`)를 포함한다 8. 사용자 생성/수정/비활성화 이벤트가 audit_logs에 기록된다 9. 비밀번호 변경 이력은 별도로 추적된다 | NextAuth.js v5 + `@auth/prisma-adapter`. bcrypt (`bcryptjs` 패키지). 세션 관리: JWT 또는 DB 세션 (설정 가능). RBAC 미들웨어: Next.js middleware.ts에서 역할 기반 라우트 보호. |
-| **FR-DM-016** | sessions 엔티티 정의 (NextAuth.js 호환) | NextAuth.js v5의 세션 관리를 위한 sessions, accounts, verification_tokens 테이블을 정의한다. NextAuth.js Prisma Adapter 공식 스키마를 따르며, DB 세션 전략 사용 시 세션 토큰과 만료 시각을 관리한다. | P0 | Phase 1 | 1. `sessions` 테이블의 `session_token`은 유니크 제약조건이 적용된다 2. `accounts` 테이블은 OAuth 제공자별 계정 연동 정보를 저장하며, `provider + provider_account_id` 복합 유니크 제약이 적용된다 3. `verification_tokens` 테이블은 이메일 인증/비밀번호 재설정 토큰을 관리한다 4. 사용자 삭제 시 관련 세션과 계정이 CASCADE 삭제된다 5. 만료된 세션은 주기적으로 정리된다 (크론 또는 NextAuth.js 내장) 6. 세션 타임아웃은 기본 30분이며 시스템 설정으로 조절 가능하다 | `@auth/prisma-adapter` 공식 스키마. JWT 전략 시 sessions 테이블 미사용, DB 전략 시 사용. 세션 타임아웃: NextAuth.js `maxAge` 설정. |
+| **FR-DM-015** | users 엔티티 정의 | 시스템 사용자를 관리하는 테이블을 정의한다. FastAPI JWT 인증과 호환되는 스키마 구조를 따르되, 시스템 고유 필드(`role`, `is_active`, `password_hash`, `last_login_at`)를 추가한다. 역할 기반 접근 제어(RBAC)를 위해 ADMIN, OPERATOR, INVESTIGATOR, VIEWER 4가지 역할을 지원한다. | P0 | Phase 1 | 1. `id`는 UUID v7 형식의 PK이다 2. `email`은 유니크 제약조건이 적용되며 로그인 식별자로 사용된다 3. `password_hash`는 bcrypt 해시(cost factor 12)로 저장된다. 평문 비밀번호는 저장하지 않는다 4. `role`은 `ADMIN`(전체 관리), `OPERATOR`(시스템 운영/채증 관리), `INVESTIGATOR`(채증 실행/조회), `VIEWER`(조회 전용) 4가지 enum 값을 지원한다 5. `is_active`가 false인 사용자는 로그인이 차단된다 6. `last_login_at`은 최종 로그인 시각을 기록한다 7. 범용 인증 필드 구조(`email_verified`, `image`)를 포함한다 8. 사용자 생성/수정/비활성화 이벤트가 audit_logs에 기록된다 9. 비밀번호 변경 이력은 별도로 추적된다 | FastAPI Security (python-jose + passlib). bcrypt (passlib 패키지). 세션 관리: JWT Bearer Token 기반. RBAC 미들웨어: FastAPI Depends() 의존성으로 역할 기반 라우트 보호. |
+| **FR-DM-016** | sessions 엔티티 정의 (NextAuth.js 호환) | FastAPI JWT 인증의 세션 관리를 위한 sessions, accounts, verification_tokens 테이블을 정의한다. JWT 토큰 블랙리스트, 리프레시 토큰 관리, 만료 시각을 관리한다. | P0 | Phase 1 | 1. `sessions` 테이블의 `session_token`은 유니크 제약조건이 적용된다 2. `accounts` 테이블은 OAuth 제공자별 계정 연동 정보를 저장하며, `provider + provider_account_id` 복합 유니크 제약이 적용된다 3. `verification_tokens` 테이블은 이메일 인증/비밀번호 재설정 토큰을 관리한다 4. 사용자 삭제 시 관련 세션과 계정이 CASCADE 삭제된다 5. 만료된 세션은 주기적으로 정리된다 (Celery Beat 크론 작업) 6. 세션 타임아웃은 기본 30분이며 시스템 설정으로 조절 가능하다 | SQLAlchemy 세션 모델. JWT 전략 기반이며 refresh_token은 sessions 테이블에서 관리. 세션 타임아웃: FastAPI JWT `ACCESS_TOKEN_EXPIRE_MINUTES` 설정. |
 
 ---
 
 ## H. 시스템 설정 (Phase 1)
 
-### Prisma 스키마: system_settings
+### 스키마: system_settings
 
 ```prisma
 model SystemSetting {
@@ -712,13 +747,13 @@ model SystemSetting {
 
 | ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
 |----|------|------|---------|-------|----------|---------------|
-| **FR-DM-017** | system_settings 엔티티 정의 | 시스템 전역 설정을 키-값(key-value) 형태로 관리하는 테이블을 정의한다. 채증 파이프라인 설정(동시 브라우저 수, 타임아웃, 재시도 횟수), 외부 서비스 설정(SMS 제공자 우선순위, 프록시 설정), 비용 한도, 알림 설정 등을 DB에 저장하여 시스템 재시작 없이 런타임에 변경할 수 있도록 한다. | P0 | Phase 1 | 1. `key`는 유니크 제약조건이 적용된 설정 키이다 (예: `browser.maxConcurrency`, `sms.providerPriority`, `cost.monthlyLimitUsd`) 2. `value`는 JSON 타입으로 문자열, 숫자, 배열, 객체 등 다양한 값 형태를 지원한다 3. `description`은 설정 항목의 설명이다 4. `updated_by`는 설정을 마지막으로 변경한 사용자의 FK이다 5. 설정 변경 시 audit_logs에 변경 전/후 값이 기록된다 6. 애플리케이션은 Redis 캐시를 통해 설정값을 빠르게 조회하며, DB 변경 시 캐시를 무효화한다 7. 초기 시드 데이터로 기본 설정값이 마이그레이션 시 자동 삽입된다 | Redis 캐시 (설정값 조회 최적화), Prisma seed 스크립트 (초기 설정값). 초기 설정 키 예시: `browser.maxConcurrency: 5`, `sms.providerPriority: ["PVAPINS","GRIZZLYSMS","SMS_ACTIVATE"]`, `captcha.timeoutSeconds: 300`, `cost.monthlyLimitUsd: 2000`. |
+| **FR-DM-017** | system_settings 엔티티 정의 | 시스템 전역 설정을 키-값(key-value) 형태로 관리하는 테이블을 정의한다. 채증 파이프라인 설정(동시 브라우저 수, 타임아웃, 재시도 횟수), 외부 서비스 설정(SMS 제공자 우선순위, 프록시 설정), 비용 한도, 알림 설정 등을 DB에 저장하여 시스템 재시작 없이 런타임에 변경할 수 있도록 한다. | P0 | Phase 1 | 1. `key`는 유니크 제약조건이 적용된 설정 키이다 (예: `browser.maxConcurrency`, `sms.providerPriority`, `cost.monthlyLimitUsd`) 2. `value`는 JSON 타입으로 문자열, 숫자, 배열, 객체 등 다양한 값 형태를 지원한다 3. `description`은 설정 항목의 설명이다 4. `updated_by`는 설정을 마지막으로 변경한 사용자의 FK이다 5. 설정 변경 시 audit_logs에 변경 전/후 값이 기록된다 6. 애플리케이션은 Redis 캐시를 통해 설정값을 빠르게 조회하며, DB 변경 시 캐시를 무효화한다 7. 초기 시드 데이터로 기본 설정값이 마이그레이션 시 자동 삽입된다 | Redis 캐시 (설정값 조회 최적화), Alembic data migration 또는 seed 스크립트 (초기 설정값). 초기 설정 키 예시: `browser.maxConcurrency: 5`, `sms.providerPriority: ["PVAPINS","GRIZZLYSMS","SMS_ACTIVATE"]`, `captcha.timeoutSeconds: 300`, `cost.monthlyLimitUsd: 2000`. |
 
 ---
 
 ## I. 팝업 패턴 (Phase 2)
 
-### Prisma 스키마: popup_patterns
+### 스키마: popup_patterns
 
 ```prisma
 model PopupPattern {
@@ -753,8 +788,8 @@ model PopupPattern {
 
 | ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
 |----|------|------|---------|-------|----------|---------------|
-| **FR-DM-019** | 핵심 인덱스 정의 | 자주 조회되는 쿼리 패턴에 최적화된 단일/복합 인덱스를 정의한다. 대시보드 목록 조회, 채증 큐 폴링, 증거 검색, 감사 로그 조회 등 주요 쿼리의 응답 시간을 2초 이내로 보장한다. | P0 | Phase 1 | 1. **sites 테이블**: `domain` (단일), `status` (단일), `category` (단일), `confidence_score` (단일), `first_detected_at` (단일) 인덱스가 적용된다 2. **investigations 테이블**: `site_id` (단일), `status` (단일), `status + scheduled_at` (복합), `created_by` (단일) 인덱스가 적용된다 3. **evidence_files 테이블**: `investigation_id` (단일), `file_type` (단일), `sha256_hash` (단일) 인덱스가 적용된다 4. **audit_logs 테이블**: `entity_type + entity_id` (복합), `actor_id` (단일), `action` (단일), `created_at` (단일) 인덱스가 적용된다 5. **detection_results 테이블**: `site_id` (단일), `source` (단일), `created_at` (단일) 인덱스가 적용된다 6. **classification_results 테이블**: `site_id` (단일), `review_status` (단일), `confidence_score` (단일) 인덱스가 적용된다 7. **domain_history 테이블**: `site_id + checked_at` (복합), `domain` (단일), `status` (단일) 인덱스가 적용된다 8. 모든 인덱스 정의 후 `EXPLAIN ANALYZE`로 쿼리 실행 계획을 검증하여 인덱스가 실제로 사용되는지 확인한다 9. 사이트 목록 조회(status 필터 + 페이지네이션)가 1000건 기준 200ms 이내에 응답한다 | Prisma `@@index` 어노테이션. PostgreSQL `EXPLAIN ANALYZE` 기반 쿼리 최적화. 복합 인덱스는 선택성이 높은 컬럼을 선행 컬럼으로 배치. 부분 인덱스(partial index) 활용: `WHERE deleted_at IS NULL` 조건의 부분 인덱스로 소프트 삭제된 레코드 제외. |
-| **FR-DM-020** | 파티셔닝 전략 | 대용량 시계열 데이터(audit_logs, domain_history)에 대해 날짜 기반 파티셔닝을 적용하여 쿼리 성능과 데이터 관리 효율을 확보한다. 파티션 단위, 보존 기간, 자동 파티션 생성을 정의한다. | P1 | Phase 2 | 1. **audit_logs 테이블**: `created_at` 기준 월별 파티셔닝이 적용된다 2. **domain_history 테이블**: `checked_at` 기준 월별 파티셔닝이 적용된다 3. 새로운 월 시작 시 해당 월의 파티션이 자동으로 생성된다 (pg_partman 또는 크론 스크립트) 4. audit_logs의 보존 기간은 5년이며, 5년 초과 데이터는 아카이브(cold storage) 후 파티션 분리가 가능하다 5. domain_history의 보존 기간은 2년이며, 2년 초과 데이터는 요약 통계로 집계 후 원본 파티션 아카이브가 가능하다 6. 파티션 프루닝(partition pruning)이 작동하여 `created_at` 범위 쿼리 시 불필요한 파티션을 스캔하지 않는다 7. 파티셔닝 적용 후 전체 테이블 스캔 대비 쿼리 응답 시간이 50% 이상 개선된다 | PostgreSQL 네이티브 `RANGE` 파티셔닝 (`PARTITION BY RANGE (created_at)`). `pg_partman` 확장으로 자동 파티션 관리. Prisma는 파티셔닝을 직접 지원하지 않으므로 raw SQL 마이그레이션으로 적용. 예시: `CREATE TABLE audit_logs_2026_03 PARTITION OF audit_logs FOR VALUES FROM ('2026-03-01') TO ('2026-04-01')`. |
+| **FR-DM-019** | 핵심 인덱스 정의 | 자주 조회되는 쿼리 패턴에 최적화된 단일/복합 인덱스를 정의한다. 대시보드 목록 조회, 채증 큐 폴링, 증거 검색, 감사 로그 조회 등 주요 쿼리의 응답 시간을 2초 이내로 보장한다. | P0 | Phase 1 | 1. **sites 테이블**: `domain` (단일), `status` (단일), `category` (단일), `confidence_score` (단일), `first_detected_at` (단일) 인덱스가 적용된다 2. **investigations 테이블**: `site_id` (단일), `status` (단일), `status + scheduled_at` (복합), `created_by` (단일) 인덱스가 적용된다 3. **evidence_files 테이블**: `investigation_id` (단일), `file_type` (단일), `sha256_hash` (단일) 인덱스가 적용된다 4. **audit_logs 테이블**: `entity_type + entity_id` (복합), `actor_id` (단일), `action` (단일), `created_at` (단일) 인덱스가 적용된다 5. **detection_results 테이블**: `site_id` (단일), `source` (단일), `created_at` (단일) 인덱스가 적용된다 6. **classification_results 테이블**: `site_id` (단일), `review_status` (단일), `confidence_score` (단일) 인덱스가 적용된다 7. **domain_history 테이블**: `site_id + checked_at` (복합), `domain` (단일), `status` (단일) 인덱스가 적용된다 8. 모든 인덱스 정의 후 `EXPLAIN ANALYZE`로 쿼리 실행 계획을 검증하여 인덱스가 실제로 사용되는지 확인한다 9. 사이트 목록 조회(status 필터 + 페이지네이션)가 1000건 기준 200ms 이내에 응답한다 | SQLAlchemy `Index()` 선언. PostgreSQL `EXPLAIN ANALYZE` 기반 쿼리 최적화. 복합 인덱스는 선택성이 높은 컬럼을 선행 컬럼으로 배치. 부분 인덱스(partial index) 활용: `WHERE deleted_at IS NULL` 조건의 부분 인덱스로 소프트 삭제된 레코드 제외. |
+| **FR-DM-020** | 파티셔닝 전략 | 대용량 시계열 데이터(audit_logs, domain_history)에 대해 날짜 기반 파티셔닝을 적용하여 쿼리 성능과 데이터 관리 효율을 확보한다. 파티션 단위, 보존 기간, 자동 파티션 생성을 정의한다. | P1 | Phase 2 | 1. **audit_logs 테이블**: `created_at` 기준 월별 파티셔닝이 적용된다 2. **domain_history 테이블**: `checked_at` 기준 월별 파티셔닝이 적용된다 3. 새로운 월 시작 시 해당 월의 파티션이 자동으로 생성된다 (pg_partman 또는 크론 스크립트) 4. audit_logs의 보존 기간은 5년이며, 5년 초과 데이터는 아카이브(cold storage) 후 파티션 분리가 가능하다 5. domain_history의 보존 기간은 2년이며, 2년 초과 데이터는 요약 통계로 집계 후 원본 파티션 아카이브가 가능하다 6. 파티션 프루닝(partition pruning)이 작동하여 `created_at` 범위 쿼리 시 불필요한 파티션을 스캔하지 않는다 7. 파티셔닝 적용 후 전체 테이블 스캔 대비 쿼리 응답 시간이 50% 이상 개선된다 | PostgreSQL 네이티브 `RANGE` 파티셔닝 (`PARTITION BY RANGE (created_at)`). `pg_partman` 확장으로 자동 파티션 관리. Alembic 마이그레이션 스크립트에서 raw SQL로 파티셔닝 적용. 예시: `CREATE TABLE audit_logs_2026_03 PARTITION OF audit_logs FOR VALUES FROM ('2026-03-01') TO ('2026-04-01')`. |
 
 ---
 
@@ -1015,7 +1050,7 @@ model PopupPattern {
 | FR-DM-013 | domain_history 엔티티 정의 | P1 | Phase 2 | 도메인 모니터링 |
 | FR-DM-014 | domain_clusters 엔티티 정의 | P1 | Phase 2 | 도메인 모니터링 |
 | FR-DM-015 | users 엔티티 정의 | P0 | Phase 1 | 사용자 관리 |
-| FR-DM-016 | sessions 엔티티 정의 (NextAuth.js 호환) | P0 | Phase 1 | 사용자 관리 |
+| FR-DM-016 | sessions 엔티티 정의 (FastAPI JWT 호환) | P0 | Phase 1 | 사용자 관리 |
 | FR-DM-017 | system_settings 엔티티 정의 | P0 | Phase 1 | 시스템 설정 |
 | FR-DM-018 | popup_patterns 엔티티 정의 | P1 | Phase 2 | 팝업 패턴 |
 | FR-DM-019 | 핵심 인덱스 정의 | P0 | Phase 1 | 인덱스/성능 |
@@ -1040,9 +1075,9 @@ model PopupPattern {
 
 ---
 
-## Redis 데이터 구조 (BullMQ 작업 큐)
+## Redis 데이터 구조 (Celery 작업 큐)
 
-> 아래 Redis 데이터 구조는 DB 테이블이 아닌 BullMQ 기반 인메모리 작업 큐 설계이다.
+> 아래 Redis 데이터 구조는 DB 테이블이 아닌 Celery 기반 인메모리 작업 큐 설계이다.
 
 | 큐 이름 | 용도 | 관련 DB 테이블 | 동시성 |
 |---------|------|---------------|--------|
@@ -1055,9 +1090,9 @@ model PopupPattern {
 
 ---
 
-## S3/MinIO 저장소 구조
+## MinIO 저장소 구조
 
-> 증거 파일은 DB에 메타데이터만 저장하고, 실제 파일은 S3/MinIO에 보관한다.
+> 증거 파일은 DB에 메타데이터만 저장하고, 실제 파일은 MinIO(boto3 SDK)에 보관한다.
 
 ```
 bucket: evidence-files/
@@ -1086,13 +1121,13 @@ bucket: evidence-files/
 
 ---
 
-## Prisma 마이그레이션 전략
+## Alembic 마이그레이션 전략
 
 | 단계 | 내용 | 명령어 |
 |------|------|--------|
-| 스키마 작성 | `prisma/schema.prisma` 파일에 모델 정의 | - |
-| 마이그레이션 생성 | SQL 마이그레이션 파일 생성 | `npx prisma migrate dev --name init` |
-| 파티셔닝 적용 | audit_logs, domain_history 파티셔닝 (raw SQL) | 수동 SQL 마이그레이션 추가 |
-| 시드 데이터 | 초기 설정값, 기본 키워드, 관리자 계정 | `npx prisma db seed` |
-| 클라이언트 생성 | Prisma Client 타입 생성 | `npx prisma generate` |
-| 프로덕션 배포 | 마이그레이션 적용 | `npx prisma migrate deploy` |
+| 모델 작성 | `app/models/` 디렉토리에 SQLAlchemy 모델 정의 | - |
+| 마이그레이션 생성 | Alembic 자동 감지 마이그레이션 파일 생성 | `alembic revision --autogenerate -m "init"` |
+| 파티셔닝 적용 | audit_logs, domain_history 파티셔닝 (raw SQL) | Alembic 마이그레이션에 `op.execute()` 추가 |
+| 시드 데이터 | 초기 설정값, 기본 키워드, 관리자 계정 | `python scripts/seed.py` 또는 Alembic data migration |
+| 마이그레이션 적용 (개발) | 개발 환경 마이그레이션 | `alembic upgrade head` |
+| 프로덕션 배포 | 마이그레이션 적용 | `alembic upgrade head` |

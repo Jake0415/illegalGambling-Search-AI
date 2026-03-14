@@ -2,9 +2,9 @@
 
 ## 현재 단계
 
-- **단계**: Plan 2 - PRD 작성
-- **상태**: 완료 (Phase A + Phase B)
-- **최종 업데이트**: 2026-03-14
+- **단계**: Plan 3 - PRD v1.1 검증 완료 / ROADMAP 업데이트 완료
+- **상태**: PRD v1.1-ROADMAP 정합성 검증 완료 (조건부 통과)
+- **최종 업데이트**: 2026-03-15
 
 ## 완료된 작업
 
@@ -92,7 +92,8 @@
 | **[Plan 1.5]** Topic 3: 오픈소스 솔루션 | `docs/planning/plan1.5-tech-review/topic3-opensource-solutions.md` | 완료 |
 | **[Plan 1.5]** Topic 4: Claude LLM 연동 | `docs/planning/plan1.5-tech-review/topic4-claude-llm-integration.md` | 완료 |
 | **[Plan 1.5]** 통합 보고서 | `docs/planning/plan1.5-tech-review/consolidated-report.md` | 완료 |
-| 의사결정 로그 | `docs/planning/decisions.md` | 완료 (7건 기록) |
+| 의사결정 로그 | `docs/planning/decisions.md` | 완료 (11건 기록: 7건 기술 리서치 + 4건 백엔드 아키텍처) |
+| **[검증]** PRD-ROADMAP 정합성 보고서 | `docs/planning/prd-roadmap-validation-report.md` | 완료 (조건부 통과) |
 | **[Plan 2]** 통합 PRD | `docs/PRD.md` | 완료 |
 | **[Plan 2]** 제품 개요 및 스토리 | `docs/PRD-sections/01-overview-and-stories.md` | 완료 |
 | **[Plan 2]** 채증 엔진 PRD | `docs/PRD-sections/02-evidence-collection-engine.md` | 완료 |
@@ -135,13 +136,53 @@
 - **사용자 스토리**: 17개 (4개 페르소나)
 - **데이터 테이블**: 21개
 - **API 엔드포인트**: 49개
-- **의사결정**: 7건 (decisions.md)
+- **의사결정**: 11건 (decisions.md) — 7건 기술 리서치 + 4건 백엔드 아키텍처
+
+### 백엔드 아키텍처 결정 (2026-03-15)
+
+- [x] FastAPI (Python) 백엔드 프레임워크 결정 — LangChain/LangGraph 네이티브 연동
+- [x] PostgreSQL 유지, ORM을 Prisma -> SQLAlchemy + Alembic으로 전환 결정
+- [x] MinIO (S3 호환) 오브젝트 스토리지 확정
+- [x] LangChain + LangGraph AI 오케스트레이션 채택
+- [x] 프로젝트 구조 분리: `frontend/` (Next.js) + `backend/` (FastAPI)
+- [x] 관련 기획 문서 업데이트 (decisions.md 4건, ROADMAP.md, service-concept.md, progress.md)
+
+#### LangChain/LangGraph 활용 포인트
+
+| 활용처 | 기술 | 설명 |
+| ------ | ---- | ---- |
+| 사이트 분류 | LangChain + Claude Haiku | 도박 여부 판정, F1 94-95% |
+| 채증 워크플로우 | LangGraph 상태 머신 | 3단계 파이프라인, 분기/재시도/수동 개입 |
+| 키워드 생성 | LangChain | 시드 키워드 -> 유사 키워드 자동 확장 |
+| 보고서 생성 | LangChain + Claude Sonnet | 한국어 수사 보고서 자동 생성 |
+| CAPTCHA 판단 | LangGraph 분기 로직 | 유형 판별 -> API/수동/스킵 분기 |
+
+### PRD v1.1 - ROADMAP 정합성 검증 (2026-03-15)
+
+- [x] PRD v1.1 분석 (기술 스택 전환, 아키텍처 결정 #8~#12)
+- [x] ROADMAP Phase 3/4 업데이트 (구 기술 참조 10건 수정)
+  - BullMQ -> Celery, Crawlee -> Scrapy+scrapy-playwright, fingerprint-suite -> playwright-stealth
+  - warcio.js -> Python warcio, opentimestamps JS -> Python, @react-pdf -> WeasyPrint/reportlab
+  - normalize-url -> Python url-normalize, BullMQ repeat -> Celery Beat
+- [x] PRD-ROADMAP 교차 검증 (216개 요구사항 매핑 확인, 구 기술 잔존 0건)
+- [x] 검증 보고서 작성 (`docs/planning/prd-roadmap-validation-report.md`)
+- **판정**: 조건부 통과 (Major Issue 2건: LangGraph Task 명시성, rebrowser-playwright Python 호환성)
 
 ## 다음 단계
 
+- **Phase 2 준비: UI/UX 화면 정의서 작성** (`docs/ui-specs/`, 1주)
+  - [ ] Round 1: 데이터 테이블 페이지 5개 (사이트, 채증, 증거, 검토, 설정)
+  - [ ] Round 2: 대시보드/카드 페이지 2개 (메인 대시보드, SMS 비용)
+  - [ ] Round 3: 차트/시각화 1개 (통계)
+  - [ ] Round 4: 폼/특수 페이지 4개 (CAPTCHA, 보고서, 로그인, 위저드)
+  - [ ] Round 5: 공통 2개 (반응형+다크모드, 통합 검증)
+  - 산출물: 14개 화면 정의서 (`docs/ui-specs/*.md`)
+  - 각 정의서 포함 항목: 페이지 목적, ASCII 와이어프레임, 컴포넌트 목록, 데이터 바인딩, 인터랙션, PRD 매핑(FR-UI-xxx)
+
 - Plan 3: 기술 설계 (아키텍처, DB, API 상세 설계)
   - 시스템 아키텍처 설계 (컴포넌트 다이어그램, 시퀀스 다이어그램)
-  - Prisma 스키마 초안 작성
-  - API 라우트 구조 설계
+  - **SQLAlchemy 모델 설계** (Prisma 스키마 21개 모델 기반 전환)
+  - **FastAPI 라우터 구조 설계** (35개 엔드포인트)
+  - **LangGraph 워크플로우 그래프 설계** (채증 파이프라인 상태 머신)
   - CI/CD 파이프라인 설계
-  - 개발 환경 구성 (Docker Compose)
+  - 개발 환경 구성 (Docker Compose: Next.js + FastAPI + PostgreSQL + Redis + MinIO)

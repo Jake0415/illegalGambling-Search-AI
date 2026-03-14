@@ -20,6 +20,37 @@
 7. **통계 및 리포트** — 기간별/유형별 통계, 네트워크 시각화, 정기 보고서
 8. **시스템 설정** — 사용자/역할 관리, 외부 서비스 설정, 감사 로그
 
+### 설계 프로세스: 화면 정의서 기반 구현
+
+본 프로젝트는 UI 코드 구현 전에 **텍스트 기반 화면 정의서(UI Spec)**를 먼저 작성하는 2단계 프로세스를 따른다. 화면 정의서는 기획자와 개발자 간 UI/UX 설계를 사전에 합의하고, 구현 시 참조하는 설계 문서 역할을 한다.
+
+**화면 정의서에 포함할 항목:**
+1. **페이지 목적** -- 사용자 니즈와 해결하는 문제
+2. **레이아웃 구조** -- ASCII 와이어프레임으로 영역 배치
+3. **컴포넌트 목록** -- shadcn/ui 기본 컴포넌트 + 커스텀 컴포넌트
+4. **데이터 바인딩** -- mock 서비스/API 엔드포인트 매핑
+5. **사용자 인터랙션** -- 클릭, 필터, 정렬, 모달, 네비게이션 등
+6. **PRD 요구사항 매핑** -- 해당 페이지가 충족하는 FR-UI-xxx 목록
+
+**페이지별 화면 정의서 파일:**
+
+| 화면 정의서 | 파일 경로 | 대상 페이지 | PRD 요구사항 |
+|------------|----------|------------|-------------|
+| 메인 대시보드 | `docs/ui-specs/dashboard.md` | `/` | FR-UI-001~004 |
+| 사이트 관리 | `docs/ui-specs/sites.md` | `/sites`, `/sites/[id]`, `/sites/new`, `/sites/import` | FR-UI-005~010 |
+| 채증 모니터링 | `docs/ui-specs/investigations.md` | `/investigations`, `/investigations/[id]`, `/investigations/gallery`, `/investigations/[id]/results` | FR-UI-011~014 |
+| 증거 관리 | `docs/ui-specs/evidence.md` | `/evidence`, `/evidence/[id]/verify`, `/evidence/[id]/report`, `/evidence/[id]/audit` | FR-UI-015~018 |
+| CAPTCHA/OTP 수동 개입 | `docs/ui-specs/captcha-queue.md` | `/investigations/captcha-queue` | FR-UI-019~021 |
+| AI 분류 검토 | `docs/ui-specs/review.md` | `/review`, `/review/[id]` | FR-UI-022~023 |
+| 통계 및 분석 | `docs/ui-specs/analytics.md` | `/analytics` | FR-UI-024~026 |
+| 보고서 | `docs/ui-specs/reports.md` | `/reports` | FR-UI-027~028 |
+| 시스템 설정 | `docs/ui-specs/settings.md` | `/settings`, `/settings/users`, `/settings/keywords`, `/settings/audit-log` | FR-UI-029~032 |
+| SMS 비용 대시보드 | `docs/ui-specs/sms-cost.md` | (설정 내 위젯) | FR-SMS-018~021 |
+| 로그인/회원가입 | `docs/ui-specs/auth.md` | `/login`, `/signup` | FR-API-001 |
+| 초기 설정 위저드 | `docs/ui-specs/setup-wizard.md` | `/setup` | 슈퍼어드민 계정 구조 |
+| 반응형/다크모드 | `docs/ui-specs/responsive-darkmode.md` | (공통) | FR-UI-033~035 |
+| 통합 검증 체크리스트 | `docs/ui-specs/integration-checklist.md` | (전체) | 전체 UI 요구사항 |
+
 ### 핵심 기술 스택
 
 | 영역 | 채택 기술 | 근거 |

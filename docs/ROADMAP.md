@@ -1,8 +1,10 @@
 # 개발 로드맵 (ROADMAP)
 
 > **프로젝트**: illegalGambling-Search-AI (불법 도박 사이트 자동 검색/채증 시스템)
-> **작성일**: 2026-03-14
-> **PRD 기준**: v1.0 (216개 기능 요구사항, 17개 사용자 스토리, 21개 DB 테이블, 49개 API 엔드포인트)
+> **작성일**: 2026-03-14 (백엔드 아키텍처 반영: 2026-03-15)
+> **PRD 기준**: v1.1 (216개 기능 요구사항, 17개 사용자 스토리, 21개 DB 테이블, 49개 API 엔드포인트)
+> **백엔드 스택**: FastAPI (Python) + SQLAlchemy + LangChain/LangGraph + PostgreSQL + MinIO
+> **프론트엔드 스택**: Next.js 15 (App Router) + React 19 + shadcn/ui
 > **Task 파일**: `/tasks/XXX-task-name.md` 형식으로 관리
 
 ---
@@ -11,9 +13,9 @@
 
 | Phase | 명칭 | 기간 | Task 수 | 핵심 목표 |
 |-------|------|------|---------|----------|
-| **Phase 1** | 애플리케이션 골격 구축 | 2주 | Task 001~010 | 라우트 구조, 타입 정의, Prisma 스키마, 레이아웃 골격 |
-| **Phase 2** | UI/UX 완성 (더미 데이터) | 3주 | Task 011~024 | 모든 페이지 UI 완성, 반응형, 역할별 메뉴, 공통 컴포넌트 |
-| **Phase 3** | 핵심 기능 구현 | 5~6주 | Task 025~044 | DB 연동, 인증/RBAC, API, 채증 파이프라인, 증거 무결성 |
+| **Phase 1** | 애플리케이션 골격 구축 | 2주 | Task 001~010 | 라우트 구조, 타입 정의, DB 스키마, 레이아웃 골격 |
+| **Phase 2** | UI/UX 완성 (더미 데이터) | 4주 (정의서 1주 + 구현 3주) | Task 011~024 | 화면 정의서 작성 후 UI 구현, 반응형, 역할별 메뉴, 공통 컴포넌트 |
+| **Phase 3** | 핵심 기능 구현 (FastAPI 백엔드) | 5~6주 | Task 025~044 | FastAPI 서버, SQLAlchemy DB 연동, 인증/RBAC, REST API, LangGraph 채증 파이프라인, 증거 무결성 |
 | **Phase 4** | 고급 기능 및 최적화 | 4~5주 | Task 045~056 | SMS 자동 인증, AI 탐지, 실시간 모니터링, 네트워크 시각화, 배포 |
 
 ---
@@ -248,9 +250,41 @@
 
 ---
 
-## Phase 2: UI/UX 완성 (더미 데이터) (3주)
+## Phase 2: UI/UX 완성 (더미 데이터) (4주: 정의서 1주 + 구현 3주)
 
 > **목표**: 모든 페이지의 UI를 더미 데이터로 완성한다. 실제 백엔드 연동 없이 전체 사용자 경험을 검증할 수 있는 프로토타입 수준의 UI를 구축한다.
+>
+> **프로세스**: Phase 2는 2단계(Stage)로 진행한다. Stage 1에서 화면 정의서를 먼저 작성하고, Stage 2에서 정의서 기반으로 코드를 구현한다.
+
+### Stage 1: UI/UX 화면 정의서 작성 (1주)
+
+> **목표**: UI 코드 구현 전에 각 페이지의 UI/UX를 텍스트 기반으로 설계한다. 화면 정의서는 개발자와 기획자 간 커뮤니케이션 도구이자, 구현 시 참조하는 설계 문서 역할을 한다.
+>
+> **산출물 위치**: `docs/ui-specs/` 디렉토리에 14개 화면 정의서
+
+**화면 정의서에 포함할 항목:**
+- 페이지 목적 (사용자 니즈)
+- 레이아웃 구조 (ASCII 와이어프레임)
+- 컴포넌트 목록 (shadcn/ui + 커스텀)
+- 데이터 바인딩 (mock 서비스/API 매핑)
+- 사용자 인터랙션 (클릭, 필터, 정렬, 모달 등)
+- PRD 요구사항 매핑 (FR-UI-xxx)
+
+**작성 순서 (패턴별 묶음):**
+
+| Round | 유형 | 대상 페이지 | 화면 정의서 파일 | 예상 소요 |
+|-------|------|------------|-----------------|----------|
+| Round 1 | 데이터 테이블 페이지 | 사이트 목록/상세, 채증 큐/결과, 증거 목록, 검토 큐, 설정 | `docs/ui-specs/sites.md`, `docs/ui-specs/investigations.md`, `docs/ui-specs/evidence.md`, `docs/ui-specs/review.md`, `docs/ui-specs/settings.md` | 2일 |
+| Round 2 | 대시보드/카드 페이지 | 메인 대시보드, SMS 비용 대시보드 | `docs/ui-specs/dashboard.md`, `docs/ui-specs/sms-cost.md` | 0.5일 |
+| Round 3 | 차트/시각화 | 통계 대시보드 | `docs/ui-specs/analytics.md` | 0.5일 |
+| Round 4 | 폼/특수 페이지 | CAPTCHA 수동 개입, 보고서, 로그인/회원가입, 초기 설정 위저드 | `docs/ui-specs/captcha-queue.md`, `docs/ui-specs/reports.md`, `docs/ui-specs/auth.md`, `docs/ui-specs/setup-wizard.md` | 1일 |
+| Round 5 | 공통/검증 | 반응형+다크모드 공통 규칙, 통합 검증 체크리스트 | `docs/ui-specs/responsive-darkmode.md`, `docs/ui-specs/integration-checklist.md` | 1일 |
+
+---
+
+### Stage 2: UI 코드 구현 (3주)
+
+> **목표**: Stage 1에서 작성한 화면 정의서를 기반으로 모든 페이지의 UI를 코드로 구현한다. 각 Task 구현 시 해당 화면 정의서(`docs/ui-specs/`)를 참조한다.
 
 ### Task 011: 구현 — 메인 대시보드 UI
 
@@ -475,33 +509,38 @@
 
 ---
 
-## Phase 3: 핵심 기능 구현 (5~6주)
+## Phase 3: 핵심 기능 구현 — FastAPI 백엔드 (5~6주)
 
-> **목표**: 실제 백엔드를 연결하고 핵심 비즈니스 로직을 구현한다. 인증/인가, DB 연동, 채증 파이프라인, 증거 무결성 등 시스템의 핵심 기능이 동작하는 상태를 만든다.
+> **목표**: FastAPI (Python) 백엔드를 구축하고 핵심 비즈니스 로직을 구현한다. SQLAlchemy + PostgreSQL DB 연동, JWT 인증/RBAC, REST API (35개 엔드포인트), LangGraph 기반 채증 파이프라인, 증거 무결성 등 시스템의 핵심 기능이 동작하는 상태를 만든다.
+>
+> **아키텍처 변경 (2026-03-15 결정)**: 기존 Next.js API Routes + Prisma 기반에서 FastAPI + SQLAlchemy + LangChain/LangGraph로 전환. Next.js는 프론트엔드 전용으로 유지하며, FastAPI 백엔드와 REST API로 통신한다.
 
-### Task 025: 연동 — PostgreSQL + Prisma 데이터베이스 연동
+### Task 025: 연동 — FastAPI 프로젝트 초기화 + PostgreSQL + SQLAlchemy 데이터베이스 연동
 
 | 항목 | 내용 |
 |------|------|
-| **예상 소요** | 3일 |
-| **선행 Task** | Task 003 |
+| **예상 소요** | 4일 |
+| **선행 Task** | Task 003 (Prisma 스키마 참조용) |
 | **PRD 참조** | FR-DM-001~020 |
 
 **구현 사항:**
-- [ ] 1. **Prisma 마이그레이션 실행**: `prisma migrate dev`로 PostgreSQL에 전체 스키마 반영
-- [ ] 2. **Prisma Client 설정**: 싱글턴 패턴 (`src/lib/prisma.ts`), 로깅 설정, 소프트 삭제 미들웨어
-- [ ] 3. **Seed 스크립트 실행**: 슈퍼어드민 계정 (bcrypt 해시), 기본 시스템 설정, 초기 키워드 50개
-- [ ] 4. **audit_logs 테이블 INSERT-only 권한 설정**: raw SQL로 `REVOKE UPDATE, DELETE` 실행
-- [ ] 5. **Redis 연결 설정** (`src/lib/redis.ts`): BullMQ용 Redis 클라이언트, 세션 캐시용 Redis 클라이언트
+- [ ] 1. **FastAPI 프로젝트 초기화** (`backend/`): FastAPI + Uvicorn 설정, 프로젝트 구조 (`backend/app/`, `backend/app/models/`, `backend/app/api/`, `backend/app/services/`), pyproject.toml 또는 requirements.txt
+- [ ] 2. **SQLAlchemy 모델 정의**: 기존 Prisma 스키마(21개 모델) 기반으로 SQLAlchemy 모델 재작성. UUID v7, snake_case, 소프트 삭제, 감사 필드, JSON 필드, Enum 타입 반영
+- [ ] 3. **Alembic 마이그레이션 설정**: `alembic init`, 초기 마이그레이션 생성 및 실행으로 PostgreSQL에 전체 스키마 반영
+- [ ] 4. **DB 세션 관리**: 비동기 SQLAlchemy (`asyncpg`), 세션 의존성 주입 (`get_db`), 커넥션 풀 설정
+- [ ] 5. **Seed 스크립트 실행**: 슈퍼어드민 계정 (bcrypt 해시), 기본 시스템 설정, 초기 키워드 50개
+- [ ] 6. **audit_logs 테이블 INSERT-only 권한 설정**: raw SQL로 `REVOKE UPDATE, DELETE` 실행
+- [ ] 7. **Redis 연결 설정** (`backend/app/core/redis.py`): 작업 큐용, 세션 캐시용 Redis 클라이언트
 
 **테스트 체크리스트:**
-- [ ] Prisma migrate 정상 실행 확인
+- [ ] Alembic migrate 정상 실행 확인
 - [ ] Seed 데이터 정상 삽입 확인
 - [ ] audit_logs UPDATE/DELETE 시도 시 권한 오류 확인
+- [ ] FastAPI `/docs` (Swagger UI) 접속 확인
 
 ---
 
-### Task 026: 구현 — NextAuth.js v5 인증 시스템
+### Task 026: 구현 — FastAPI JWT 인증 시스템
 
 | 항목 | 내용 |
 |------|------|
@@ -510,10 +549,10 @@
 | **PRD 참조** | FR-API-001~004, FR-DM-015~016, NFR-SEC-002 |
 
 **구현 사항:**
-- [ ] 1. **NextAuth.js v5 설정** (`src/lib/auth.ts`): Credentials Provider (이메일/비밀번호), Prisma Adapter, JWT 전략 (access_token 1시간, refresh_token 7일)
+- [ ] 1. **FastAPI JWT 인증 설정** (`backend/app/core/auth.py`): `python-jose` + `passlib[bcrypt]`, access_token 1시간, refresh_token 7일, OAuth2PasswordBearer
 - [ ] 2. **로그인 API** (`POST /api/auth/login`): bcrypt 비밀번호 비교, 로그인 실패 카운터 (Redis TTL), 5회 실패 시 15분 잠금, 감사 로그 기록
-- [ ] 3. **RBAC 미들웨어** (`src/lib/middleware/auth.ts`): `withAuth(handler, requiredRoles)` HOF. JWT에서 역할 추출, 권한 검증, 권한 부족 시 403 + 감사 로그
-- [ ] 4. **`/setup` 초기 설정 위저드 연동**: DB에 사용자 0명일 때만 접근. 슈퍼어드민 생성 후 리디렉션. 시스템 설정 DB 저장
+- [ ] 3. **RBAC 미들웨어** (`backend/app/core/permissions.py`): FastAPI Depends 기반 `require_roles(*roles)` 의존성. JWT에서 역할 추출, 권한 검증, 권한 부족 시 403 + 감사 로그
+- [ ] 4. **`/setup` 초기 설정 위저드 API**: DB에 사용자 0명일 때만 접근 가능. 슈퍼어드민 생성 엔드포인트. 시스템 설정 DB 저장
 - [ ] 5. **5개 역할 체계 구현**: `super_admin`, `admin`, `operator`, `investigator`, `legal` 역할별 권한 매핑을 DB `system_settings`에 저장
 
 **테스트 체크리스트:**
@@ -533,11 +572,11 @@
 | **PRD 참조** | FR-API-005~010 |
 
 **구현 사항:**
-- [ ] 1. **사이트 목록 조회** (`GET /api/sites`): 커서 기반 페이지네이션, 상태/카테고리/검색 필터, 정렬
+- [ ] 1. **사이트 목록 조회** (`GET /api/sites`): 커서 기반 페이지네이션, 상태/카테고리/검색 필터, 정렬 (FastAPI + SQLAlchemy)
 - [ ] 2. **사이트 등록** (`POST /api/sites`): URL 정규화, 중복 검사, 도메인 추출, AI 분류 큐 등록
-- [ ] 3. **사이트 상세/수정/삭제** (`GET/PATCH/DELETE /api/sites/[id]`): 소프트 삭제, 감사 로그
+- [ ] 3. **사이트 상세/수정/삭제** (`GET/PATCH/DELETE /api/sites/{id}`): 소프트 삭제, 감사 로그
 - [ ] 4. **벌크 URL 임포트** (`POST /api/sites/import`): CSV 파싱, 중복 제거, 일괄 등록
-- [ ] 5. **사이트 관리 페이지 DB 연동**: 더미 데이터를 실제 API 호출로 교체
+- [ ] 5. **Next.js 프론트엔드에서 FastAPI 연동**: 더미 데이터를 FastAPI REST API 호출로 교체
 
 **테스트 체크리스트:**
 - [ ] 사이트 CRUD 전체 플로우 동작 확인
@@ -555,7 +594,7 @@
 | **PRD 참조** | FR-API-011~018, FR-EC-022~024 |
 
 **구현 사항:**
-- [ ] 1. **채증 세션 생성/목록/상세** (`POST/GET /api/investigations`, `GET /api/investigations/[id]`): BullMQ 큐 등록, 상태 관리
+- [ ] 1. **채증 세션 생성/목록/상세** (`POST/GET /api/investigations`, `GET /api/investigations/[id]`): Celery 작업 큐 등록, 상태 관리
 - [ ] 2. **채증 실행/취소** (`POST /api/investigations/[id]/execute`, `POST /api/investigations/[id]/cancel`)
 - [ ] 3. **채증 결과 조회** (`GET /api/investigations/[id]/results`): 단계별 증거 파일 목록, 메타데이터
 - [ ] 4. **CAPTCHA 큐 API** (`GET/POST /api/investigations/captcha-queue`): 수동 개입 대기 목록, 해결 처리
@@ -635,10 +674,11 @@
 | **PRD 참조** | FR-EV-009 (증거 패키지 구조), FR-DM-003 |
 
 **구현 사항:**
-- [ ] 1. **S3 클라이언트 설정** (`src/lib/storage.ts`): `@aws-sdk/client-s3` 기반, MinIO/S3 호환
-- [ ] 2. **파일 업로드/다운로드 유틸리티**: 증거 파일 업로드, 스트리밍 다운로드, 서명된 URL 생성
+- [ ] 1. **MinIO 클라이언트 설정** (`backend/app/core/storage.py`): `boto3` 기반, MinIO/S3 호환
+- [ ] 2. **파일 업로드/다운로드 유틸리티**: 증거 파일 업로드, 스트리밍 다운로드, 서명된 URL 생성 (presigned URL)
 - [ ] 3. **증거 패키지 디렉토리 구조**: `evidence/{siteId}/{investigationId}/stage-{n}/{filename}` 경로 규칙
 - [ ] 4. **파일 업로드 시 SHA-256 해시 자동 생성**: 스트리밍 해시 계산, DB 기록
+- [ ] 5. **Docker Compose에 MinIO 서비스 추가**: MinIO 컨테이너, 초기 버킷 생성 스크립트
 
 ---
 
@@ -651,7 +691,7 @@
 | **PRD 참조** | FR-EC-001~006, FR-EC-019~024 |
 
 **구현 사항:**
-- [ ] 1. **rebrowser-playwright 설치 및 기본 설정**: CDP 유출 패치 확인, fingerprint-suite 연동
+- [ ] 1. **rebrowser-playwright 설치 및 기본 설정**: CDP 유출 패치 확인, playwright-stealth 연동
 - [ ] 2. **사이트 접속**: URL 접속, 재시도 로직 (최대 3회, 프록시 로테이션), 타임아웃 (30초)
 - [ ] 3. **Cloudflare/JS Challenge 자동 통과**: 챌린지 페이지 감지, 자동 대기
 - [ ] 4. **1단계 채증 수행**: 풀페이지 스크린샷 (PNG), HTML 소스 저장, 네트워크 요청 로그, WHOIS/DNS 수집
@@ -667,7 +707,7 @@
 
 ---
 
-### Task 034: 구현 — BullMQ 채증 작업 큐
+### Task 034: 구현 — Celery 채증 작업 큐 (또는 FastAPI BackgroundTasks)
 
 | 항목 | 내용 |
 |------|------|
@@ -676,11 +716,11 @@
 | **PRD 참조** | FR-EC-022~023, FR-DE-023~027 |
 
 **구현 사항:**
-- [ ] 1. **BullMQ 큐 설정**: 채증 큐 (`investigation-queue`), 탐지 큐 (`detection-queue`), 알림 큐 (`notification-queue`)
+- [ ] 1. **Celery + Redis 큐 설정** (`backend/app/core/celery.py`): 채증 큐 (`investigation-queue`), 탐지 큐 (`detection-queue`), 알림 큐 (`notification-queue`)
 - [ ] 2. **워커 구현**: 큐에서 작업 소비 -> 1단계 채증 엔진 호출 -> 결과 저장 -> 상태 업데이트
 - [ ] 3. **재시도 전략**: 지수 백오프 (10초, 30초, 90초), 최대 3회, 프록시 변경
 - [ ] 4. **우선순위 큐**: P1(긴급) > P2(높음) > P3(보통) > P4(낮음), FIFO 내 정렬
-- [ ] 5. **큐 모니터링**: Bull Board 또는 커스텀 대시보드 위젯에서 큐 상태 표시
+- [ ] 5. **큐 모니터링**: Flower (Celery 모니터링) 또는 커스텀 대시보드 위젯에서 큐 상태 표시
 
 **테스트 체크리스트:**
 - [ ] 작업 등록 -> 소비 -> 완료 플로우 확인
@@ -699,7 +739,7 @@
 
 **구현 사항:**
 - [ ] 1. **SHA-256 해시 자동 생성**: 파일 저장과 원자적 해시 계산, hash_manifest.sha256 생성 (GNU coreutils 호환)
-- [ ] 2. **OpenTimestamps 연동**: `opentimestamps` JS 클라이언트, .ots 파일 생성, 캘린더 서버 연결, 비트코인 블록 확인 상태 추적
+- [ ] 2. **OpenTimestamps 연동**: `opentimestamps-client` Python 클라이언트, .ots 파일 생성, 캘린더 서버 연결, 비트코인 블록 확인 상태 추적
 - [ ] 3. **해시 무결성 검증**: 파일 해시 재계산 -> 매니페스트 대조 -> VERIFIED/TAMPERED/MISSING 상태
 - [ ] 4. **metadata.json 자동 생성**: URL, 수집 시각(UTC), 접속 IP, 프록시 정보, 브라우저 정보
 - [ ] 5. **collection_log.json 감사 로그**: 수집 시작~완료 전 과정 이벤트 기록, 밀리초 정밀도
@@ -711,7 +751,7 @@
 
 ---
 
-### Task 036: 구현 — Claude Haiku 4.5 AI 콘텐츠 분류
+### Task 036: 구현 — LangChain + Claude Haiku 4.5 AI 콘텐츠 분류
 
 | 항목 | 내용 |
 |------|------|
@@ -720,9 +760,9 @@
 | **PRD 참조** | FR-DE-010~013 |
 
 **구현 사항:**
-- [ ] 1. **Claude API 클라이언트** (`src/lib/claude.ts`): `@anthropic-ai/sdk`, 프롬프트 캐싱 설정
-- [ ] 2. **도박 사이트 분류 프롬프트**: 시스템 프롬프트 (전문가 역할, 한국어 도박 용어 사전), 5개 카테고리 정의, 10개 few-shot 예시
-- [ ] 3. **구조화된 출력**: `{category, confidence, evidence[]}` JSON 응답, Zod 스키마 검증
+- [ ] 1. **LangChain Claude 클라이언트** (`backend/app/services/llm/classifier.py`): `langchain-anthropic` ChatAnthropic, 프롬프트 캐싱 설정
+- [ ] 2. **도박 사이트 분류 체인**: LangChain PromptTemplate + StructuredOutputParser. 시스템 프롬프트 (전문가 역할, 한국어 도박 용어 사전), 5개 카테고리 정의, 10개 few-shot 예시
+- [ ] 3. **구조화된 출력**: `{category, confidence, evidence[]}` JSON 응답, Pydantic 모델 검증
 - [ ] 4. **저신뢰 결과 검토 큐**: 신뢰도 < 0.7 결과 자동 검토 큐 등록
 - [ ] 5. **분류 결과 DB 저장**: classification_results 테이블, sites.confidenceScore 업데이트
 
@@ -743,7 +783,7 @@
 
 **구현 사항:**
 - [ ] 1. **탐지 결과 저장**: 탐지 출처별(검색/크롤링/수동/커뮤니티) 통합 저장
-- [ ] 2. **URL 정규화 및 중복 제거**: `normalize-url`, 동일 도메인/URL 중복 감지
+- [ ] 2. **URL 정규화 및 중복 제거**: Python `url-normalize` 또는 자체 정규화 유틸리티, 동일 도메인/URL 중복 감지
 - [ ] 3. **자동 채증 큐 등록**: 신규 사이트 등록 시 채증 큐에 자동 등록
 - [ ] 4. **화이트리스트**: 합법 사이트 도메인 화이트리스트 관리, 자동 제외
 
@@ -774,10 +814,11 @@
 | **PRD 참조** | FR-UI-001~035 전체 |
 
 **구현 사항:**
-- [ ] 1. **TanStack Query 설정**: 쿼리 클라이언트, API 훅 패턴 (`useSites`, `useInvestigations`, `useEvidence` 등)
-- [ ] 2. **모든 페이지 더미 데이터 -> 실제 API 전환**: 사이트 관리, 채증 모니터링, 증거 관리, 설정 페이지
-- [ ] 3. **폼 제출 -> Server Actions/API 연동**: 사이트 등록, 채증 실행, 사용자 생성, 시스템 설정 변경
-- [ ] 4. **SSE 실시간 연동**: 대시보드 활동 피드, 채증 진행 상태 실시간 업데이트
+- [ ] 1. **TanStack Query 설정**: 쿼리 클라이언트, FastAPI 백엔드 호출 API 훅 패턴 (`useSites`, `useInvestigations`, `useEvidence` 등)
+- [ ] 2. **FastAPI 프록시 또는 CORS 설정**: Next.js -> FastAPI 백엔드 통신 구성 (개발: CORS, 프로덕션: 리버스 프록시)
+- [ ] 3. **모든 페이지 더미 데이터 -> FastAPI REST API 전환**: 사이트 관리, 채증 모니터링, 증거 관리, 설정 페이지
+- [ ] 4. **폼 제출 -> FastAPI API 연동**: 사이트 등록, 채증 실행, 사용자 생성, 시스템 설정 변경
+- [ ] 5. **SSE 실시간 연동**: FastAPI SSE 엔드포인트 -> 대시보드 활동 피드, 채증 진행 상태 실시간 업데이트
 
 ---
 
@@ -812,7 +853,7 @@
 
 **구현 사항:**
 - [ ] 1. **SingleFile CLI 연동**: 웹페이지 -> 단일 HTML 파일 생성, Playwright 세션 공유
-- [ ] 2. **WARC 기록**: `warcio.js`로 CDP 네트워크 이벤트 기반 WARC 생성, gzip 압축
+- [ ] 2. **WARC 기록**: Python `warcio` 라이브러리로 CDP 네트워크 이벤트 기반 WARC 생성, gzip 압축
 - [ ] 3. **증거 패키지 자동 생성**: 표준 디렉토리 구조 자동 생성 + ZIP 패키징
 - [ ] 4. **패키지 완전성 검사**: 필수 파일 누락 시 INCOMPLETE 상태 표시
 
@@ -945,7 +986,7 @@
 
 ---
 
-### Task 048: 구현 — Crawlee 크롤링 인프라
+### Task 048: 구현 — Scrapy + scrapy-playwright 크롤링 인프라
 
 | 항목 | 내용 |
 |------|------|
@@ -954,11 +995,11 @@
 | **PRD 참조** | FR-DE-005~009, FR-DE-028 |
 
 **구현 사항:**
-- [ ] 1. **Crawlee PlaywrightCrawler 설정**: rebrowser-playwright 드롭인, AutoscaledPool
-- [ ] 2. **got-scraping HTTP 크롤러**: TLS 핑거프린트 모방, 경량 HTTP 요청
-- [ ] 3. **fingerprint-suite 연동**: Canvas/WebGL 핑거프린트 생성/주입
-- [ ] 4. **프록시 로테이션**: Crawlee ProxyConfiguration, IPRoyal/SOAX 연동
-- [ ] 5. **링크 분석 기반 관련 사이트 추적**: BFS 3단계 깊이, 외부 링크 추출
+- [ ] 1. **Scrapy + scrapy-playwright 설정** (`backend/app/crawler/`): Scrapy 프로젝트 초기화, scrapy-playwright 플러그인으로 Playwright 브라우저 통합, 비동기 I/O
+- [ ] 2. **httpx + curl_cffi HTTP 크롤러**: TLS 핑거프린트 모방, 경량 HTTP 요청 (Python 네이티브)
+- [ ] 3. **playwright-stealth 연동**: Canvas/WebGL 핑거프린트 관리, 안티봇 탐지 우회
+- [ ] 4. **프록시 로테이션**: Scrapy 미들웨어 기반 프록시 로테이션, IPRoyal/SOAX 연동
+- [ ] 5. **링크 분석 기반 관련 사이트 추적**: Scrapy LinkExtractor + BFS 3단계 깊이, 외부 링크 추출
 
 ---
 
@@ -967,7 +1008,7 @@
 | 항목 | 내용 |
 |------|------|
 | **예상 소요** | 3일 |
-| **선행 Task** | Task 048 |
+| **선행 Task** | Task 048 (Scrapy 크롤링 인프라) |
 | **PRD 참조** | FR-DE-001~004, FR-DE-002 |
 
 **구현 사항:**
@@ -1004,7 +1045,7 @@
 | **PRD 참조** | FR-DE-024, US-A4 |
 
 **구현 사항:**
-- [ ] 1. **BullMQ repeat 기반 크론 스케줄**: 키워드 탐지 (매일), 도메인 체크 (30분), 사이트 재검증 (주 1회)
+- [ ] 1. **Celery Beat 기반 크론 스케줄**: 키워드 탐지 (매일), 도메인 체크 (30분), 사이트 재검증 (주 1회)
 - [ ] 2. **스케줄 관리 대시보드 연동**: 스케줄 설정/변경/실행 이력
 - [ ] 3. **Slack 자동 보고**: 스케줄 실행 결과 (탐지 건수, 신규 적재, 채증 성공/실패) Slack 전송
 
@@ -1050,7 +1091,7 @@
 
 **구현 사항:**
 - [ ] 1. **Claude Sonnet 4.6 보고서 생성**: 채증 결과 -> 한국어 수사 보고서 자동 생성
-- [ ] 2. **PDF 변환**: `@react-pdf/renderer`로 법원 제출용 PDF 생성, A4 규격, 목차/색인
+- [ ] 2. **PDF 변환**: Python `WeasyPrint` 또는 `reportlab`으로 법원 제출용 PDF 생성, A4 규격, 목차/색인
 - [ ] 3. **보고서 템플릿 관리**: 기관별/용도별 템플릿 3종 이상
 - [ ] 4. **정기 보고서 자동 생성**: 크론 스케줄 기반 월간/분기 보고서, 이메일/Slack 전송
 
@@ -1084,7 +1125,7 @@
 - [ ] 1. **전체 파이프라인 E2E 테스트**: URL 입력 -> 탐지 -> AI 분류 -> 3단계 채증 -> 증거 패키지 -> 보고서 생성
 - [ ] 2. **KPI 검증**: 3단계 채증 성공률 70%+, SMS 인증 성공률 60%+, 증거 무결성 100%, 시스템 가동률 99.5%+
 - [ ] 3. **보안 검점**: RBAC 전 역할 테스트, 감사 로그 변조 방지, 증거 암호화 검증
-- [ ] 4. **배포 구성**: Docker Compose (Next.js + PostgreSQL + Redis + MinIO), 환경 변수 프로덕션 설정
+- [ ] 4. **배포 구성**: Docker Compose (Next.js + FastAPI + PostgreSQL + Redis + MinIO + Celery Worker), 환경 변수 프로덕션 설정
 - [ ] 5. **운영 문서 작성**: 배포 가이드, 모니터링 설정, 장애 대응 절차
 
 ---
@@ -1105,19 +1146,19 @@ Phase 2 (UI)
   Task 011~019 → Task 021 (반응형)
   Task 024 (통합 검증)
 
-Phase 3 (핵심 기능)
-  Task 003 → Task 025 (DB 연동) → Task 026 (인증)
-  Task 026 → Task 027~031 (각 API 병렬 개발)
-  Task 025 → Task 032 (S3) → Task 033 (1단계 채증)
-  Task 033 → Task 034 (BullMQ), Task 035 (증거 무결성), Task 036 (AI 분류)
+Phase 3 (핵심 기능 — FastAPI 백엔드)
+  Task 003 → Task 025 (FastAPI 초기화 + SQLAlchemy DB 연동) → Task 026 (JWT 인증)
+  Task 026 → Task 027~031 (각 FastAPI 라우터 병렬 개발)
+  Task 025 → Task 032 (MinIO) → Task 033 (1단계 채증)
+  Task 033 → Task 034 (Celery), Task 035 (증거 무결성), Task 036 (LangChain AI 분류)
   Task 033 → Task 041 (SingleFile/WARC), Task 042 (팝업 처리)
   Task 035 → Task 040 (RFC 3161)
-  Task 027~038 → Task 039 (UI 연동)
+  Task 027~038 → Task 039 (Next.js ↔ FastAPI 연동)
   Task 044 (통합 테스트)
 
 Phase 4 (고급 기능)
   Task 033 → Task 045 (SMS) → Task 046 (2/3단계 채증)
-  Task 033 → Task 047 (CAPTCHA), Task 048 (Crawlee)
+  Task 033 → Task 047 (CAPTCHA), Task 048 (Scrapy)
   Task 048 → Task 049 (검색 탐지), Task 050 (도메인 추적)
   Task 049 + 050 → Task 051 (스케줄)
   Task 034 + 039 → Task 052 (실시간)
