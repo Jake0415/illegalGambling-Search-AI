@@ -35,7 +35,7 @@
 | 03 | [SMS 인증 자동화 기능 요구사항](./PRD-sections/03-sms-authentication.md) | `PRD-sections/03-sms-authentication.md` | PVAPins/GrizzlySMS/SMS-Activate 폴백 체인, OTP 수신/파싱, 수동 개입 연동, 비용 관리 |
 | 04 | [증거 무결성 관리 기능 요구사항](./PRD-sections/04-evidence-integrity.md) | `PRD-sections/04-evidence-integrity.md` | SHA-256 해시, OpenTimestamps, RFC 3161, 증거 패키지 구조, Chain of Custody, 보고서 생성 |
 | 05 | [탐지 엔진 기능 요구사항](./PRD-sections/05-detection-engine.md) | `PRD-sections/05-detection-engine.md` | 검색/크롤링 기반 탐지, Claude Haiku AI 분류, 도메인 호핑 추적, URL 패턴 분석, 스케줄링 |
-| 06 | [대시보드 및 UI 기능 요구사항](./PRD-sections/06-dashboard-and-ui.md) | `PRD-sections/06-dashboard-and-ui.md` | 메인 대시보드, 사이트 관리, 채증 모니터링, 증거 관리, 수동 개입 UI, 통계/리포트 |
+| 06 | [대시보드 및 UI 기능 요구사항](./PRD-sections/06-dashboard-and-ui.md) | `PRD-sections/06-dashboard-and-ui.md` | 랜딩 페이지, 메인 대시보드, 사이트 관리, 채증 모니터링, 증거 관리, 수동 개입 UI, 통계/리포트 |
 | 07 | [REST API 명세 기능 요구사항](./PRD-sections/07-api-specification.md) | `PRD-sections/07-api-specification.md` | RESTful API 설계, 인증/인가, RBAC, 사이트/채증/증거/탐지/통계 API, SSE/WebSocket |
 | 08 | [데이터베이스 데이터 모델 요구사항](./PRD-sections/08-data-model.md) | `PRD-sections/08-data-model.md` | PostgreSQL 16 + SQLAlchemy 2.x ORM, 핵심/증거/SMS/탐지/사용자 엔티티, 인덱스/파티셔닝 전략 |
 
@@ -52,10 +52,10 @@
 | 03 - SMS 인증 | FR-SMS-001 ~ FR-SMS-031 | 31개 | - | 가상번호 관리, OTP 처리, 인증 오케스트레이션, 보안 |
 | 04 - 증거 무결성 | FR-EV-001 ~ FR-EV-017 | 17개 | - | 해시, 타임스탬프, 증거 패키지, Chain of Custody, 보고서 |
 | 05 - 탐지 엔진 | FR-DE-001 ~ FR-DE-030 | 30개 | - | 검색/크롤링 탐지, AI 분류, 도메인 추적, URL 분석 |
-| 06 - 대시보드/UI | FR-UI-001 ~ FR-UI-035 | 35개 | - | 대시보드, 사이트 관리, 채증 모니터링, 증거/통계 UI |
+| 06 - 대시보드/UI | FR-UI-001 ~ FR-UI-038 | 38개 | - | 랜딩 페이지, 대시보드, 사이트 관리, 채증 모니터링, 증거/통계 UI |
 | 07 - API 명세 | FR-API-001 ~ FR-API-049 | 49개 | - | 인증, 사이트, 채증, 증거, 탐지, 통계, 시스템 API |
 | 08 - 데이터 모델 | FR-DM-001 ~ FR-DM-020 | 20개 | - | 핵심/증거/SMS/탐지/사용자 엔티티, 인덱스 |
-| **합계** | | **216개** | **17개** | **총 216개 기능 요구사항 + 17개 사용자 스토리** |
+| **합계** | | **219개** | **17개** | **총 219개 기능 요구사항 + 17개 사용자 스토리** |
 
 ### 3.2 비기능 요구사항 (NFR) 요약
 
@@ -78,10 +78,10 @@
 | 03 - SMS 인증 (FR-SMS) | - | 25 | 6 | - | 31 |
 | 04 - 증거 무결성 (FR-EV) | 6 | 5 | - | 6 | 17 |
 | 05 - 탐지 엔진 (FR-DE) | 4 | 16 | 10 | - | 30 |
-| 06 - 대시보드/UI (FR-UI) | 17 | 13 | 5 | - | 35 |
+| 06 - 대시보드/UI (FR-UI) | 17 | 16 | 5 | - | 38 |
 | 07 - API 명세 (FR-API) | 15 | 27 | 7 | - | 49 |
 | 08 - 데이터 모델 (FR-DM) | 10 | 7 | 3 | - | 20 |
-| **합계** | **64** | **114** | **31** | **7** | **216** |
+| **합계** | **64** | **117** | **31** | **7** | **219** |
 
 ### 4.2 우선순위별 요구사항 분포
 
@@ -91,7 +91,7 @@
 | 03 - SMS 인증 (FR-SMS) | 13 | 12 | 2 | - | 27* |
 | 04 - 증거 무결성 (FR-EV) | 6 | 5 | - | 6 | 17 |
 | 05 - 탐지 엔진 (FR-DE) | 5 | 13 | 8 | 2 | 28* |
-| 06 - 대시보드/UI (FR-UI) | 8 | 16 | 11 | - | 35 |
+| 06 - 대시보드/UI (FR-UI) | 8 | 18 | 12 | - | 38 |
 | 07 - API 명세 (FR-API) | 11 | 24 | 7 | - | 42* |
 | 08 - 데이터 모델 (FR-DM) | 10 | 7 | 3 | - | 20 |
 

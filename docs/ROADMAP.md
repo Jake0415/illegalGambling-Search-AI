@@ -2,7 +2,7 @@
 
 > **프로젝트**: illegalGambling-Search-AI (불법 도박 사이트 자동 검색/채증 시스템)
 > **작성일**: 2026-03-14 (백엔드 아키텍처 반영: 2026-03-15)
-> **PRD 기준**: v1.1 (216개 기능 요구사항, 17개 사용자 스토리, 21개 DB 테이블, 49개 API 엔드포인트)
+> **PRD 기준**: v1.2 (219개 기능 요구사항, 17개 사용자 스토리, 21개 DB 테이블, 49개 API 엔드포인트)
 > **백엔드 스택**: FastAPI (Python) + SQLAlchemy + LangChain/LangGraph + PostgreSQL + MinIO
 > **프론트엔드 스택**: Next.js 15 (App Router) + React 19 + shadcn/ui
 > **Task 파일**: `/tasks/XXX-task-name.md` 형식으로 관리
@@ -14,7 +14,7 @@
 | Phase | 명칭 | 기간 | Task 수 | 핵심 목표 |
 |-------|------|------|---------|----------|
 | **Phase 1** | 애플리케이션 골격 구축 | 2주 | Task 001~010 | 라우트 구조, 타입 정의, DB 스키마, 레이아웃 골격 |
-| **Phase 2** | UI/UX 완성 (더미 데이터) | 4주 (정의서 1주 + 구현 3주) | Task 011~024 | 화면 정의서 작성 후 UI 구현, 반응형, 역할별 메뉴, 공통 컴포넌트 |
+| **Phase 2** | UI/UX 완성 (더미 데이터) | 4주 (정의서 1주 + 구현 3주) | Task 011~024 (020a 포함) | 화면 정의서 작성 후 UI 구현, 랜딩 페이지, 반응형, 역할별 메뉴, 공통 컴포넌트 |
 | **Phase 3** | 핵심 기능 구현 (FastAPI 백엔드) | 5~6주 | Task 025~044 | FastAPI 서버, SQLAlchemy DB 연동, 인증/RBAC, REST API, LangGraph 채증 파이프라인, 증거 무결성 |
 | **Phase 4** | 고급 기능 및 최적화 | 4~5주 | Task 045~056 | SMS 자동 인증, AI 탐지, 실시간 모니터링, 네트워크 시각화, 배포 |
 
@@ -35,7 +35,7 @@
 **구현 사항:**
 - [ ] 1. **22개 라우트 파일 생성**: PRD 06절 기반 `app/` 디렉토리 하위에 모든 `page.tsx` 생성 (빈 컴포넌트 + 페이지 제목만)
   ```
-  /                              → app/(dashboard)/page.tsx
+  /                              → app/page.tsx (랜딩 페이지, 비인증) 또는 app/(dashboard)/page.tsx (대시보드, 인증)
   /sites                         → app/(dashboard)/sites/page.tsx
   /sites/[id]                    → app/(dashboard)/sites/[id]/page.tsx
   /sites/new                     → app/(dashboard)/sites/new/page.tsx
@@ -260,7 +260,7 @@
 
 > **목표**: UI 코드 구현 전에 각 페이지의 UI/UX를 텍스트 기반으로 설계한다. 화면 정의서는 개발자와 기획자 간 커뮤니케이션 도구이자, 구현 시 참조하는 설계 문서 역할을 한다.
 >
-> **산출물 위치**: `docs/ui-specs/` 디렉토리에 14개 화면 정의서
+> **산출물 위치**: `docs/ui-specs/` 디렉토리에 15개 화면 정의서
 
 **화면 정의서에 포함할 항목:**
 - 페이지 목적 (사용자 니즈)
@@ -277,7 +277,7 @@
 | Round 1 | 데이터 테이블 페이지 | 사이트 목록/상세, 채증 큐/결과, 증거 목록, 검토 큐, 설정 | `docs/ui-specs/sites.md`, `docs/ui-specs/investigations.md`, `docs/ui-specs/evidence.md`, `docs/ui-specs/review.md`, `docs/ui-specs/settings.md` | 2일 |
 | Round 2 | 대시보드/카드 페이지 | 메인 대시보드, SMS 비용 대시보드 | `docs/ui-specs/dashboard.md`, `docs/ui-specs/sms-cost.md` | 0.5일 |
 | Round 3 | 차트/시각화 | 통계 대시보드 | `docs/ui-specs/analytics.md` | 0.5일 |
-| Round 4 | 폼/특수 페이지 | CAPTCHA 수동 개입, 보고서, 로그인/회원가입, 초기 설정 위저드 | `docs/ui-specs/captcha-queue.md`, `docs/ui-specs/reports.md`, `docs/ui-specs/auth.md`, `docs/ui-specs/setup-wizard.md` | 1일 |
+| Round 4 | 폼/특수 페이지 | CAPTCHA 수동 개입, 보고서, 로그인/회원가입, 초기 설정 위저드, 랜딩 페이지 | `docs/ui-specs/captcha-queue.md`, `docs/ui-specs/reports.md`, `docs/ui-specs/auth.md`, `docs/ui-specs/setup-wizard.md`, `docs/ui-specs/landing.md` | 1일 |
 | Round 5 | 공통/검증 | 반응형+다크모드 공통 규칙, 통합 검증 체크리스트 | `docs/ui-specs/responsive-darkmode.md`, `docs/ui-specs/integration-checklist.md` | 1일 |
 
 ---
@@ -444,6 +444,26 @@
 
 ---
 
+### Task 020a: 구현 — 랜딩 페이지 UI
+
+| 항목 | 내용 |
+|------|------|
+| **예상 소요** | 2일 |
+| **선행 Task** | Task 005, Task 008 |
+| **PRD 참조** | FR-UI-036 (히어로 섹션/CTA), FR-UI-037 (기능 소개/시스템 구성도), FR-UI-038 (대상 기관/푸터) |
+| **화면 정의서** | `docs/ui-specs/landing.md` |
+
+**구현 사항:**
+
+- [ ] 1. **히어로 섹션**: 서비스명, 핵심 가치 제안 헤드라인, 서브 헤드라인, CTA 버튼(로그인/데모 요청), 대시보드 목업 이미지 또는 그라디언트 배경. 인증 상태에 따라 `/` 라우트에서 랜딩 페이지(비인증) 또는 대시보드(인증)로 분기
+- [ ] 2. **주요 기능 소개 카드(4~6개)**: 자동 탐지, 3단계 채증, AI 분류, 증거 무결성, SMS 자동 인증, 법원 제출용 보고서. 반응형 그리드(데스크톱 3열, 태블릿 2열, 모바일 1열), hover 애니메이션
+- [ ] 3. **시스템 구성도**: 전체 파이프라인(탐지 -> 접속 -> 채증 -> 증거 패키지)을 SVG 또는 CSS 기반 다이어그램으로 시각화
+- [ ] 4. **대상 기관 섹션**: 사행산업통합감독위원회, 경찰청 사이버수사국, 한국마사회 불법경마 감시팀, 국민체육진흥공단. 아이콘 + 활용 시나리오 설명
+- [ ] 5. **푸터**: 연락처, 법적 고지("본 시스템은 인가된 수사 기관 및 감독 기관만 사용할 수 있습니다"), 저작권, 개인정보처리방침/이용약관 링크
+- [ ] 6. **반응형 + 다크 모드**: 모바일/태블릿/데스크톱 대응, 다크 모드에서 배경/텍스트/카드 색상 전환
+
+---
+
 ### Task 021: 구현 — 반응형 디자인 및 다크 모드
 
 | 항목 | 내용 |
@@ -497,11 +517,11 @@
 | 항목 | 내용 |
 |------|------|
 | **예상 소요** | 2일 |
-| **선행 Task** | Task 011~023 |
+| **선행 Task** | Task 011~023 (020a 포함) |
 | **PRD 참조** | 전체 UI 요구사항 |
 
 **구현 사항:**
-- [ ] 1. **전체 페이지 네비게이션 검증**: 사이드바 메뉴에서 모든 22개 페이지로 정상 이동 확인
+- [ ] 1. **전체 페이지 네비게이션 검증**: 사이드바 메뉴 및 랜딩 페이지에서 모든 23개 페이지로 정상 이동 확인 (랜딩 페이지 포함)
 - [ ] 2. **역할별 메뉴 가시성 검증**: 5개 역할에 대해 접근 가능/불가 메뉴 확인
 - [ ] 3. **반응형 검증**: 모바일/태블릿/데스크톱 3개 뷰포트에서 모든 페이지 레이아웃 확인
 - [ ] 4. **`npm run check-all` 통과**: ESLint, Prettier, TypeScript 검사 전체 통과
@@ -1143,6 +1163,7 @@ Phase 1 (골격)
 Phase 2 (UI)
   Task 005 + 008 → Task 011~019 (각 페이지 UI 병렬 개발)
   Task 020 (로그인 리팩토링)
+  Task 020a (랜딩 페이지)
   Task 011~019 → Task 021 (반응형)
   Task 024 (통합 검증)
 
