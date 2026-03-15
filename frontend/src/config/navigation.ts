@@ -21,6 +21,7 @@ import {
   Users,
   Tags,
   ScrollText,
+  MessageSquare,
   type LucideIcon,
 } from 'lucide-react'
 import type { UserRole } from '@/types/enums'
@@ -152,6 +153,12 @@ export const navigationItems: NavGroup[] = [
         href: '/settings/keywords',
         icon: Tags,
         requiredRoles: ['SUPER_ADMIN', 'ADMIN', 'OPERATOR'],
+      },
+      {
+        label: 'SMS 비용',
+        href: '/settings/sms-costs',
+        icon: MessageSquare,
+        requiredRoles: ['SUPER_ADMIN', 'ADMIN'],
       },
       {
         label: '감사 로그',
