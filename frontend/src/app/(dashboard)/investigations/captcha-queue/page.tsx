@@ -1,14 +1,12 @@
-export const metadata = {
+import type { Metadata } from 'next'
+
+import { CaptchaQueueView } from './_components/captcha-queue-view'
+
+export const metadata: Metadata = {
   title: 'CAPTCHA/OTP 큐 | GambleGuard',
+  description: 'CAPTCHA/OTP 수동 개입 대기열 관리',
 }
 
 export default function CaptchaQueuePage() {
-  return (
-    <div className="flex flex-1 items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">CAPTCHA/OTP 큐</h1>
-        <p className="text-muted-foreground mt-2">준비 중입니다</p>
-      </div>
-    </div>
-  )
+  return <CaptchaQueueView />
 }

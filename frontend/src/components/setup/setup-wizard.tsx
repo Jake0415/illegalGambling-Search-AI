@@ -34,6 +34,9 @@ const setupWizardSchema = z.object({
         '비밀번호는 영문 대소문자, 숫자, 특수문자를 각각 1개 이상 포함해야 합니다.',
       ),
     passwordConfirm: z.string().min(1, '비밀번호를 다시 입력해주세요.'),
+  }).refine((data) => data.password === data.passwordConfirm, {
+    message: '비밀번호가 일치하지 않습니다.',
+    path: ['passwordConfirm'],
   }),
   database: z.object({
     databaseUrl: z

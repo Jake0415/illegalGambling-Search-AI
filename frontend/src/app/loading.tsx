@@ -1,9 +1,10 @@
+import { PageSkeleton } from '@/components/common/loading-skeleton'
+
 export default function Loading() {
   return (
-    <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center">
-        <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" />
-        <p className="text-muted-foreground mt-4 text-sm">로딩 중...</p>
+    <div className="flex min-h-screen items-center justify-center p-4">
+      <div className="w-full max-w-4xl">
+        <PageSkeleton />
       </div>
     </div>
   )

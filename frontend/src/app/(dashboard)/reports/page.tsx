@@ -1,14 +1,12 @@
-export const metadata = {
+import type { Metadata } from 'next'
+
+import { ReportsView } from './_components/reports-view'
+
+export const metadata: Metadata = {
   title: '정기 보고서 | GambleGuard',
+  description: '정기 보고서 관리 및 내보내기',
 }
 
 export default function ReportsPage() {
-  return (
-    <div className="flex flex-1 items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">정기 보고서</h1>
-        <p className="text-muted-foreground mt-2">준비 중입니다</p>
-      </div>
-    </div>
-  )
+  return <ReportsView />
 }

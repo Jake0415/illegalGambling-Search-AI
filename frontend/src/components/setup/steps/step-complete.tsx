@@ -1,8 +1,10 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { useFormContext } from 'react-hook-form'
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Loader2 } from 'lucide-react'
+import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
@@ -34,7 +36,9 @@ function maskValue(value: string | undefined): string {
 
 export function StepComplete() {
   const form = useFormContext<SetupWizardFormData>()
+  const router = useRouter()
   const [isCompleted, setIsCompleted] = useState(false)
+  const [isSaving, setIsSaving] = useState(false)
   const values = form.getValues()
 
   if (isCompleted) {
@@ -49,10 +53,7 @@ export function StepComplete() {
         </p>
         <Button
           type="button"
-          onClick={() => {
-            // Phase 3에서 실제 라우팅 구현
-            console.log('대시보드로 이동')
-          }}
+          onClick={() => router.push('/')}
         >
           대시보드로 이동
         </Button>
@@ -161,11 +162,23 @@ export function StepComplete() {
         <Button
           type="button"
           className="w-full"
-          onClick={() => {
-            console.log('설정 완료:', values)
-            setIsCompleted(true)
+          disabled={isSaving}
+          onClick={async () => {
+            setIsSaving(true)
+            try {
+              // Phase 3에서 실제 API 연동
+              console.log('설정 완료:', values)
+              await new Promise((r) => setTimeout(r, 1000))
+              toast.success('설정이 저장되었습니다.')
+              setIsCompleted(true)
+            } catch {
+              toast.error('설정 저장에 실패했습니다.')
+            } finally {
+              setIsSaving(false)
+            }
           }}
         >
+          {isSaving && <Loader2 className="mr-2 size-4 animate-spin" />}
           설정 완료
         </Button>
       </div>
