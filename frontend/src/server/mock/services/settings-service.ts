@@ -109,7 +109,7 @@ let settings: SettingRecord[] = [
   {
     id: 'setting-010',
     key: 'notification_slack_webhook',
-    value: 'https://hooks.slack.com/services/T00000000/B00000000/XXXXXXXXXXXXXXXXXXXXXXXX',
+    value: 'https://hooks.example.com/services/T00000000/B00000000/mock-webhook-token',
     description: 'Slack 알림 웹훅 URL',
     type: 'string',
     defaultValue: '',
