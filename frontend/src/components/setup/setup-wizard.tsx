@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { useForm, FormProvider } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -14,6 +15,7 @@ import { StepDatabase } from './steps/step-database'
 import { StepServices } from './steps/step-services'
 import { StepConfig } from './steps/step-config'
 import { StepComplete } from './steps/step-complete'
+import { isSetupComplete } from '@/lib/mock-auth'
 
 // ============================================================================
 // Form Schema — combines all wizard steps
@@ -84,7 +86,18 @@ const STEPS = [
 // ============================================================================
 
 export function SetupWizard() {
+  const router = useRouter()
   const [currentStep, setCurrentStep] = useState(0)
+  const [ready, setReady] = useState(false)
+
+  useEffect(() => {
+    // If setup is already done, redirect to login
+    if (isSetupComplete()) {
+      router.replace('/login')
+      return
+    }
+    setReady(true)
+  }, [router])
 
   const form = useForm<SetupWizardFormData>({
     resolver: zodResolver(setupWizardSchema),
@@ -110,6 +123,8 @@ export function SetupWizard() {
     },
     mode: 'onTouched',
   })
+
+  if (!ready) return null
 
   const StepComponent = STEPS[currentStep].component
   const isLastStep = currentStep === STEPS.length - 1

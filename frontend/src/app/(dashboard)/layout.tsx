@@ -12,6 +12,7 @@ import {
   SheetContent,
   SheetTitle,
 } from '@/components/ui/sheet'
+import { AuthGuard } from '@/components/auth-guard'
 
 export default function DashboardLayout({
   children,
@@ -21,6 +22,7 @@ export default function DashboardLayout({
   const [mobileOpen, setMobileOpen] = React.useState(false)
 
   return (
+    <AuthGuard>
     <SidebarProvider>
       <div className="flex min-h-screen">
         {/* Desktop sidebar */}
@@ -55,5 +57,6 @@ export default function DashboardLayout({
         </div>
       </div>
     </SidebarProvider>
+    </AuthGuard>
   )
 }

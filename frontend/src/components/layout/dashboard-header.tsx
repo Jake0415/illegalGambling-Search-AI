@@ -2,8 +2,9 @@
 
 import * as React from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Bell, LogOut, Menu, Settings, User } from 'lucide-react'
+import { getCurrentUser, mockLogout } from '@/lib/mock-auth'
 import { Button } from '@/components/ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
@@ -99,8 +100,16 @@ interface DashboardHeaderProps {
 }
 
 export function DashboardHeader({ onMobileMenuToggle }: DashboardHeaderProps) {
+  const router = useRouter()
+  const currentUser = getCurrentUser()
+
   // Dummy notification count
   const notificationCount = 3
+
+  function handleLogout() {
+    mockLogout()
+    router.push('/login')
+  }
 
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-background px-4 lg:px-6">
@@ -144,20 +153,26 @@ export function DashboardHeader({ onMobileMenuToggle }: DashboardHeaderProps) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="relative h-9 w-9 rounded-full">
               <Avatar className="size-8">
-                <AvatarImage src="" alt="사용자" />
-                <AvatarFallback>관</AvatarFallback>
+                <AvatarImage src="" alt={currentUser?.name || '사용자'} />
+                <AvatarFallback>
+                  {currentUser?.name?.charAt(0) || '관'}
+                </AvatarFallback>
               </Avatar>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">관리자</p>
+                <p className="text-sm font-medium leading-none">
+                  {currentUser?.name || '관리자'}
+                </p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  admin@gambleguard.kr
+                  {currentUser?.email || 'admin@gambleguard.kr'}
                 </p>
                 <Badge variant="secondary" className="mt-1 w-fit text-[10px]">
-                  시스템 관리자
+                  {currentUser?.role === 'SUPER_ADMIN'
+                    ? '슈퍼관리자'
+                    : '시스템 관리자'}
                 </Badge>
               </div>
             </DropdownMenuLabel>
@@ -177,7 +192,7 @@ export function DashboardHeader({ onMobileMenuToggle }: DashboardHeaderProps) {
               </DropdownMenuItem>
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout}>
               <LogOut className="mr-2 size-4" />
               로그아웃
             </DropdownMenuItem>

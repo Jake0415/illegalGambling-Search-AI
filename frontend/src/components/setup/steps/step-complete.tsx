@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 
 import { Button } from '@/components/ui/button'
 import { Separator } from '@/components/ui/separator'
+import { completeSetup } from '@/lib/mock-auth'
 
 import type { SetupWizardFormData } from '../setup-wizard'
 
@@ -48,14 +49,20 @@ export function StepComplete() {
         <h2 className="text-2xl font-bold mb-2">
           설정이 완료되었습니다
         </h2>
-        <p className="text-muted-foreground mb-6">
-          GambleGuard 시스템을 사용할 준비가 되었습니다.
+        <p className="text-muted-foreground mb-4">
+          슈퍼관리자 계정이 생성되었습니다. 로그인해주세요.
+        </p>
+        <p className="text-sm text-muted-foreground mb-6">
+          등록된 이메일:{' '}
+          <span className="font-mono font-medium text-foreground">
+            {values.account?.email}
+          </span>
         </p>
         <Button
           type="button"
-          onClick={() => router.push('/')}
+          onClick={() => router.push('/login')}
         >
-          대시보드로 이동
+          로그인 페이지로 이동
         </Button>
       </div>
     )
@@ -166,9 +173,19 @@ export function StepComplete() {
           onClick={async () => {
             setIsSaving(true)
             try {
-              // Phase 3에서 실제 API 연동
-              console.log('설정 완료:', values)
+              // Simulate network delay
               await new Promise((r) => setTimeout(r, 1000))
+
+              // Register super admin via mock auth
+              completeSetup({
+                email: values.account?.email || '',
+                name: values.account?.name || '',
+                department: values.account?.department || '',
+                phone: values.account?.phone || '',
+                password: values.account?.password || '',
+              })
+
+              console.log('설정 완료:', values)
               toast.success('설정이 저장되었습니다.')
               setIsCompleted(true)
             } catch {
