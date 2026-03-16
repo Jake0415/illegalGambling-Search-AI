@@ -919,10 +919,8 @@ model ScheduleRunLog {
 
 ```prisma
 enum UserRole {
-  ADMIN
-  OPERATOR
-  INVESTIGATOR
-  VIEWER
+  SUPER_ADMIN  // 슈퍼관리자: 사용자 추가/삭제 + 모든 사용자 정보 수정
+  ADMIN        // 관리자: 자신의 정보만 수정, 나머지 기능 권한 동일
 }
 
 model User {
@@ -932,9 +930,11 @@ model User {
   emailVerified DateTime? @map("email_verified")
   passwordHash  String    @map("password_hash")
   image         String?
-  role          UserRole  @default(VIEWER)
+  role          UserRole  @default(ADMIN)
   isActive      Boolean   @default(true) @map("is_active")
   lastLoginAt   DateTime? @map("last_login_at")
+  department    String?                          // 부서
+  phone         String?                          // 전화번호
 
   accounts     Account[]
   sessions     Session[]
