@@ -17,7 +17,9 @@
       "mcp__slack__slack_get_channel_history",
       "mcp__slack__slack_get_thread_replies",
       "Skill(prd-validate)",
-      "Skill(prd-validate:*)"
+      "Skill(prd-validate:*)",
+      "Skill(git:commit)",
+      "Skill(git:commit:*)"
     ],
     "deny": [],
     "ask": []

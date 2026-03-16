@@ -423,6 +423,8 @@ export interface User extends MutableEntity {
   role: UserRole;
   isActive: boolean;
   lastLoginAt: Date | null;
+  department: string | null;
+  phone: string | null;
 
   // Relations (optional)
   accounts?: Account[];

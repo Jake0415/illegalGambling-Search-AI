@@ -24,7 +24,7 @@ const logTemplates: LogTemplate[] = [
   { entityType: 'ClassificationResult', action: AuditAction.UPDATE, details: { reviewStatus: 'REJECTED', reason: '카테고리 오분류' } },
   { entityType: 'Site', action: AuditAction.UPDATE, details: { field: 'status', newValue: 'MONITORING' } },
   { entityType: 'Site', action: AuditAction.UPDATE, details: { field: 'category', newValue: 'CASINO' } },
-  { entityType: 'User', action: AuditAction.CREATE, details: { role: 'INVESTIGATOR' } },
+  { entityType: 'User', action: AuditAction.CREATE, details: { role: 'ADMIN' } },
   { entityType: 'User', action: AuditAction.UPDATE, details: { field: 'isActive', newValue: false } },
   { entityType: 'Keyword', action: AuditAction.CREATE, details: { keyword: '불법토토' } },
   { entityType: 'SystemSetting', action: AuditAction.UPDATE, details: { key: 'max_concurrent_investigations', newValue: 10 } },
@@ -34,7 +34,7 @@ const logTemplates: LogTemplate[] = [
   { entityType: 'Site', action: AuditAction.READ, details: { event: 'detail_view' } },
 ];
 
-const actorIds = ['user-001', 'user-002', 'user-004', 'user-005', 'user-006', 'user-007', 'user-009'];
+const actorIds = ['user-001', 'user-002', 'user-003', 'user-004', 'user-005'];
 const actorIps = ['192.168.1.10', '192.168.1.20', '10.0.0.50', '10.0.0.51', '172.16.0.100', '172.16.0.101', '192.168.2.30'];
 const entityIds = [
   'site-001', 'site-002', 'site-003', 'site-004', 'site-005',

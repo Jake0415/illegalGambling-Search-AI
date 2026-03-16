@@ -21,9 +21,11 @@ export async function GET(
     id,
     email: 'user@example.com',
     name: '사용자',
-    role: 'OPERATOR',
+    role: 'ADMIN',
     isActive: true,
     lastLoginAt: null,
+    department: null,
+    phone: null,
     createdAt: new Date().toISOString(),
   });
 }

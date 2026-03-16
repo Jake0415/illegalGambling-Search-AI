@@ -16,9 +16,6 @@ export const MOCK_ROLE_SWITCHER_ENABLED =
 const roleUserMap: Record<string, typeof mockUsers[number]> = {
   SUPER_ADMIN: mockUsers[0], // 김철수
   ADMIN: mockUsers[1],       // 이영희
-  OPERATOR: mockUsers[3],    // 정민호
-  INVESTIGATOR: mockUsers[5], // 강현우
-  LEGAL: mockUsers[8],       // 한소희
 };
 
 function toCurrentUser(user: typeof mockUsers[number]): CurrentUserData {
@@ -35,31 +32,10 @@ function toCurrentUser(user: typeof mockUsers[number]): CurrentUserData {
     ],
     ADMIN: [
       'sites:read', 'sites:write', 'sites:delete',
-      'investigations:read', 'investigations:write',
+      'investigations:read', 'investigations:write', 'investigations:delete',
       'evidence:read', 'evidence:download', 'evidence:verify',
       'users:read', 'users:write',
       'settings:read', 'settings:write',
-      'audit:read',
-      'analytics:read',
-      'classifications:read', 'classifications:review',
-    ],
-    OPERATOR: [
-      'sites:read', 'sites:write',
-      'investigations:read', 'investigations:write',
-      'evidence:read', 'evidence:download',
-      'analytics:read',
-      'classifications:read',
-    ],
-    INVESTIGATOR: [
-      'sites:read',
-      'investigations:read', 'investigations:write',
-      'evidence:read', 'evidence:download', 'evidence:verify',
-      'classifications:read',
-    ],
-    LEGAL: [
-      'sites:read',
-      'investigations:read',
-      'evidence:read', 'evidence:download', 'evidence:verify',
       'audit:read',
       'analytics:read',
       'classifications:read', 'classifications:review',
@@ -83,9 +59,6 @@ function toCurrentUser(user: typeof mockUsers[number]): CurrentUserData {
 export const mockCurrentUsers = {
   SUPER_ADMIN: toCurrentUser(roleUserMap.SUPER_ADMIN),
   ADMIN: toCurrentUser(roleUserMap.ADMIN),
-  OPERATOR: toCurrentUser(roleUserMap.OPERATOR),
-  INVESTIGATOR: toCurrentUser(roleUserMap.INVESTIGATOR),
-  LEGAL: toCurrentUser(roleUserMap.LEGAL),
 } as const;
 
 /** 기본 Mock 사용자 (SUPER_ADMIN) */

@@ -35,9 +35,6 @@ export const DEFAULT_MONTHLY_COST_LIMIT = 1000 // USD
 export const ROLE_HIERARCHY = {
   SUPER_ADMIN: 100,
   ADMIN: 80,
-  OPERATOR: 60,
-  INVESTIGATOR: 40,
-  LEGAL: 20,
 } as const
 
 export type RoleName = keyof typeof ROLE_HIERARCHY

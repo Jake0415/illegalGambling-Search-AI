@@ -11,9 +11,6 @@ import { cn } from '@/lib/utils'
 const roleLabels: Record<string, string> = {
   SUPER_ADMIN: '슈퍼 관리자',
   ADMIN: '관리자',
-  OPERATOR: '운영자',
-  INVESTIGATOR: '수사관',
-  LEGAL: '법무',
 }
 
 const roleColors: Record<string, string> = {
@@ -21,12 +18,6 @@ const roleColors: Record<string, string> = {
     'bg-purple-100 text-purple-800 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800',
   ADMIN:
     'bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800',
-  OPERATOR:
-    'bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800',
-  INVESTIGATOR:
-    'bg-orange-100 text-orange-800 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
-  LEGAL:
-    'bg-gray-100 text-gray-800 border-gray-200 dark:bg-gray-900/30 dark:text-gray-400 dark:border-gray-700',
 }
 
 function formatRelativeTime(dateStr: string | null): string {
@@ -102,6 +93,38 @@ export function getUserColumns(): ColumnDef<UserListItem, unknown>[] {
         )
       },
       size: 120,
+    },
+    {
+      accessorKey: 'department',
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          title="부서"
+          isSorted={column.getIsSorted()}
+          onToggle={() => column.toggleSorting()}
+        />
+      ),
+      cell: ({ row }) => (
+        <span className="text-sm">
+          {row.getValue<string | null>('department') ?? '-'}
+        </span>
+      ),
+      size: 120,
+    },
+    {
+      accessorKey: 'phone',
+      header: ({ column }) => (
+        <DataTableColumnHeader
+          title="연락처"
+          isSorted={column.getIsSorted()}
+          onToggle={() => column.toggleSorting()}
+        />
+      ),
+      cell: ({ row }) => (
+        <span className="text-sm">
+          {row.getValue<string | null>('phone') ?? '-'}
+        </span>
+      ),
+      size: 130,
     },
     {
       accessorKey: 'isActive',

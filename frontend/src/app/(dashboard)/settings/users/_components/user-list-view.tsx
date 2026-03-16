@@ -23,9 +23,6 @@ const roleOptions = [
   { value: '_all', label: '전체 역할' },
   { value: UserRole.SUPER_ADMIN, label: '슈퍼 관리자' },
   { value: UserRole.ADMIN, label: '관리자' },
-  { value: UserRole.OPERATOR, label: '운영자' },
-  { value: UserRole.INVESTIGATOR, label: '수사관' },
-  { value: UserRole.LEGAL, label: '법무' },
 ]
 
 export function UserListView() {

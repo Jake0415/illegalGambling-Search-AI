@@ -806,6 +806,8 @@ export interface UserListItem {
   role: UserRole;
   isActive: boolean;
   lastLoginAt: string | null;
+  department: string | null;
+  phone: string | null;
   createdAt: string;
 }
 

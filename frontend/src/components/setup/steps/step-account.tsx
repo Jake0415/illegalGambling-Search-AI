@@ -88,6 +88,34 @@ export function StepAccount() {
 
       <FormField
         control={form.control}
+        name="account.department"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>부서</FormLabel>
+            <FormControl>
+              <Input placeholder="정보보안팀" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
+        name="account.phone"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>연락처</FormLabel>
+            <FormControl>
+              <Input placeholder="010-1234-5678" {...field} />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={form.control}
         name="account.password"
         render={({ field }) => (
           <FormItem>

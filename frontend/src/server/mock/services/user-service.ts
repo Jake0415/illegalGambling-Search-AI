@@ -24,6 +24,8 @@ function toListItem(user: User): UserListItem {
     role: user.role,
     isActive: user.isActive,
     lastLoginAt: user.lastLoginAt?.toISOString() ?? null,
+    department: user.department,
+    phone: user.phone,
     createdAt: user.createdAt.toISOString(),
   };
 }
@@ -78,6 +80,8 @@ export const mockUserService = {
       role: req.role,
       isActive: true,
       lastLoginAt: null,
+      department: null,
+      phone: null,
       createdAt: now,
       updatedAt: now,
     };
