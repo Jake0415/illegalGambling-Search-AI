@@ -48,26 +48,25 @@ export function withRole(..._roles: UserRole[]): (handler: RouteHandler) => Rout
 }
 
 /**
- * Zod 유효성 검증 미들웨어 래퍼 (Phase 3에서 실제 구현)
- * 현재는 검증 없이 통과
+ * Zod 유효성 검증 미들웨어 래퍼
+ * request body를 Zod 스키마로 검증 후 handler에 전달
  */
 export function withValidation<T>(
-  _schema: { parse: (data: unknown) => T },
+  schema: { safeParse: (data: unknown) => { success: boolean; error?: { issues: Array<{ message: string }> } }; parse: (data: unknown) => T },
 ) {
   return (handler: RouteHandler) => {
     return async (request: NextRequest, context?: unknown) => {
-      // TODO: Phase 3 - Zod 스키마 검증
-      // try {
-      //   const body = await request.json();
-      //   schema.parse(body);
-      // } catch (error) {
-      //   return apiError('요청 데이터의 유효성 검증에 실패했습니다.', 'VALIDATION_ERROR', 400);
-      // }
+      try {
+        const body = await request.clone().json();
+        const result = schema.safeParse(body);
+        if (!result.success) {
+          const messages = result.error?.issues.map((i) => i.message).join(', ') ?? '유효성 검증 실패';
+          return apiError(messages, 'VALIDATION_ERROR', 400);
+        }
+      } catch {
+        return apiError('잘못된 JSON 형식입니다.', 'INVALID_JSON', 400);
+      }
       return handler(request, context);
     };
   };
 }
-
-// _roles와 _schema에 언더스코어를 사용하여 미사용 경고를 방지합니다.
-// apiError는 Phase 3에서 미들웨어 내부에서 사용될 예정입니다.
-void apiError;

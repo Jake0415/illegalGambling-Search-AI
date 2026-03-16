@@ -1,14 +1,9 @@
+import { KeywordManagementView } from './_components/keyword-management-view'
+
 export const metadata = {
   title: '키워드 관리 | GambleGuard',
 }
 
 export default function SettingsKeywordsPage() {
-  return (
-    <div className="flex flex-1 items-center justify-center">
-      <div className="text-center">
-        <h1 className="text-2xl font-bold">키워드 관리</h1>
-        <p className="text-muted-foreground mt-2">준비 중입니다</p>
-      </div>
-    </div>
-  )
+  return <KeywordManagementView />
 }

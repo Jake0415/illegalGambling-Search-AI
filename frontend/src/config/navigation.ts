@@ -22,6 +22,8 @@ import {
   Tags,
   ScrollText,
   MessageSquare,
+  Activity,
+  Calendar,
   type LucideIcon,
 } from 'lucide-react'
 import type { UserRole } from '@/types/enums'
@@ -96,6 +98,18 @@ export const navigationItems: NavGroup[] = [
         label: 'CAPTCHA 큐',
         href: '/investigations/captcha-queue',
         icon: ShieldAlert,
+        requiredRoles: ['SUPER_ADMIN', 'ADMIN', 'OPERATOR'],
+      },
+      {
+        label: '채증 통계',
+        href: '/investigations/stats',
+        icon: Activity,
+        requiredRoles: ['SUPER_ADMIN', 'ADMIN', 'OPERATOR', 'INVESTIGATOR'],
+      },
+      {
+        label: '자동 스케줄',
+        href: '/investigations/schedules',
+        icon: Calendar,
         requiredRoles: ['SUPER_ADMIN', 'ADMIN', 'OPERATOR'],
       },
     ],

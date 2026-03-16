@@ -75,7 +75,19 @@
 | **FR-DE-016** | DNS 변경 모니터링 | 도메인의 DNS A 레코드, CNAME 레코드, NS 레코드 변경을 감지한다. DNS 레코드를 주기적으로 조회하여 이전 조회 결과와 비교하고, 변경이 감지되면 새로운 호스팅 인프라로의 이전 여부를 분석한다. 동일 IP 대역으로 이전한 도메인은 동일 운영자로 추정 태그한다. | P1 | Phase 2 | 1) DNS A, CNAME, NS 레코드가 1시간 간격으로 조회·저장된다. 2) 레코드 변경 감지 시 변경 전후 값이 이력에 기록된다. 3) 동일 IP 또는 동일 /24 서브넷을 공유하는 도메인이 자동으로 그룹핑된다. 4) DNS 변경 이벤트가 도메인 상세 페이지에서 타임라인으로 조회 가능하다. | Node.js `dns.resolve()` (A, CNAME, NS), WHOIS API (도메인 등록 정보), PostgreSQL (DNS 레코드 이력 테이블) |
 | **FR-DE-017** | 리디렉트 체인 추적 | HTTP 301/302 리디렉트, JavaScript `location.href` 리디렉트, `<meta http-equiv="refresh">` 리디렉트를 모두 추적한다. 리디렉트 체인의 전체 경로(중간 도메인 포함)를 기록하고, 최종 도착 도메인을 신규 도박 사이트 후보로 등록한다. 리디렉트 체인 깊이는 최대 10단계까지 추적한다. | P1 | Phase 2 | 1) HTTP 301/302 리디렉트를 최대 10단계까지 추적하고 전체 경로를 기록한다. 2) JavaScript 기반 리디렉트(`location.href`, `location.replace`)를 Playwright 페이지 이벤트로 감지한다. 3) `<meta http-equiv="refresh">` 태그를 HTML 파싱으로 감지한다. 4) 리디렉트 체인에서 발견된 신규 도메인이 자동으로 탐지 큐에 등록된다. | rebrowser-playwright (페이지 네비게이션 이벤트), got-scraping (`followRedirect: false`로 수동 추적), Cheerio (meta refresh 파싱) |
 | **FR-DE-018** | 커뮤니티/SNS 신규 도메인 정보 수집 | 텔레그램 채널, 트위터(X) 계정, 온라인 커뮤니티(디시인사이드, 에펨코리아 등)에서 불법 도박 사이트의 신규 도메인 정보를 수집한다. 도박 홍보글에서 URL 패턴을 추출하고, 추출된 URL을 탐지 파이프라인에 자동 등록한다. | P2 | Phase 3 | 1) 최소 3개 이상의 텔레그램 도박 홍보 채널에서 메시지를 실시간 수집한다. 2) 트위터 검색 API로 도박 관련 키워드가 포함된 트윗에서 URL을 추출한다. 3) 수집된 메시지/글에서 URL 패턴(`https?://[^\s]+`)을 정규식으로 추출한다. 4) 추출된 URL 중 기존 DB에 없는 신규 URL이 자동으로 탐지 큐에 등록된다. | Telegram Bot API (`node-telegram-bot-api`), Twitter API v2 (`twitter-api-v2`), Crawlee (커뮤니티 크롤링), 정규식 URL 추출 |
-| **FR-DE-019** | 도메인 클러스터링 (동일 운영자 도메인 그룹핑) | 다양한 속성(IP 주소, WHOIS 등록자 정보, 사이트 디자인 유사도, 광고 네트워크, DNS 레코드)을 기반으로 동일 운영자가 운영하는 것으로 추정되는 도메인들을 클러스터로 그룹핑한다. 클러스터 내 한 도메인이 폐쇄되면, 동일 클러스터의 다른 도메인을 우선 모니터링한다. | P2 | Phase 3 | 1) 동일 IP, 동일 WHOIS 등록자, 동일 광고 네트워크 중 2개 이상 속성이 일치하면 자동 클러스터링된다. 2) 사이트 디자인 유사도가 perceptual hash 기준 80% 이상이면 클러스터 후보로 플래그된다. 3) 클러스터 내 도메인 폐쇄 시 동일 클러스터 도메인의 모니터링 주기가 2배로 증가한다. 4) 대시보드에서 클러스터 목록 및 소속 도메인을 조회할 수 있다. | PostgreSQL (클러스터 테이블, 도메인-클러스터 관계), `sharp` + `imghash` (스크린샷 유사도), WHOIS API, 그래프 클러스터링 알고리즘 |
+| **FR-DE-019** | 도메인 클러스터링 (동일 운영자 도메인 그룹핑) | 다양한 속성(IP 주소, WHOIS 등록자 정보, 사이트 디자인 유사도, 광고 네트워크, DNS 레코드, SSL 인증서, 트래킹 ID)을 기반으로 동일 운영자가 운영하는 것으로 추정되는 도메인들을 클러스터로 그룹핑한다. 클러스터 내 한 도메인이 폐쇄되면, 동일 클러스터의 다른 도메인을 우선 모니터링한다. | P2 | Phase 3 | 1) 동일 IP, 동일 WHOIS 등록자, 동일 광고 네트워크/트래킹 ID 중 2개 이상 속성이 일치하면 자동 클러스터링된다. 2) 사이트 디자인 유사도가 perceptual hash 기준 80% 이상이면 클러스터 후보로 플래그된다. 3) 클러스터 내 도메인 폐쇄 시 동일 클러스터 도메인의 모니터링 주기가 2배로 증가한다. 4) 대시보드에서 클러스터 목록 및 소속 도메인을 조회할 수 있다. 5) SSL 인증서 SAN 목록에서 발견된 관련 도메인이 클러스터 후보로 자동 등록된다. 6) Google Analytics/GTM ID가 동일한 도메인이 자동 클러스터링된다. | PostgreSQL (클러스터 테이블, 도메인-클러스터 관계), `sharp` + `imghash` (스크린샷 유사도), WHOIS API, 그래프 클러스터링 알고리즘 |
+
+### D-2. 인프라 핑거프린팅 기반 호핑 탐지 (Phase 2-3)
+
+> **배경**: 도메인이 변경되어도 SSL 인증서, TLS 핸드셰이크 패턴, 트래킹 코드, Passive DNS 이력 등 인프라 수준의 흔적은 유지되는 경우가 많다. 이를 활용하면 도메인 호핑 후에도 동일 운영자를 추적할 수 있다.
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-DE-031** | SSL 인증서 SAN 분석 | SSL/TLS 인증서의 Subject Alternative Name(SAN) 필드에 포함된 도메인 목록을 추출하여, 동일 인증서를 공유하는 관련 도메인을 자동 발견한다. 불법 도박 사이트 운영자는 비용 절감을 위해 하나의 와일드카드/멀티도메인 인증서에 여러 도메인을 포함시키는 경향이 있다. 발견된 관련 도메인은 탐지 큐에 자동 등록된다. | P1 | Phase 2 | 1) 도메인 접속 시 SSL 인증서의 SAN 필드를 자동 추출하여 DB에 저장한다. 2) SAN에 포함된 다른 도메인 중 기존 DB에 없는 신규 도메인이 탐지 큐에 자동 등록된다. 3) 동일 인증서(fingerprint 기준)를 공유하는 도메인 그룹이 클러스터 후보로 자동 플래그된다. 4) 인증서 만료일 기반으로 도메인 이동 시점을 예측한다. | Node.js `tls.connect()` + `getPeerCertificate()`, 인증서 fingerprint(SHA-256), SAN 파싱(`x509` 모듈) |
+| **FR-DE-032** | CT(Certificate Transparency) 로그 모니터링 | crt.sh API를 활용하여 Certificate Transparency 로그에서 특정 조직/도메인 패턴과 관련된 신규 인증서 발급을 실시간 모니터링한다. 불법 도박 사이트가 새 도메인으로 이동할 때 SSL 인증서를 발급하는 시점에 선제적으로 탐지한다. | P2 | Phase 2 | 1) 기존 클러스터에 속한 도메인의 발급자(Issuer), 조직명 패턴을 기반으로 CT 로그를 주기적(1시간 간격)으로 조회한다. 2) 신규 인증서에 포함된 도메인이 기존 클러스터와 연관성이 높으면 자동으로 탐지 큐에 등록된다. 3) Let's Encrypt 등 무료 인증서 발급자 기준 필터링으로 노이즈를 줄인다. 4) CT 로그 모니터링으로 발견한 도메인의 탐지 출처가 'ct_log'로 기록된다. | crt.sh API (`https://crt.sh/?q=%.domain.com&output=json`), BullMQ 반복 작업, 도메인 패턴 정규식 매칭 |
+| **FR-DE-033** | JARM TLS 핑거프린팅 | JARM(John Althouse/Salesforce) 기법으로 서버의 TLS 핸드셰이크 응답 패턴을 핑거프린팅한다. 도메인이 변경되더라도 동일 서버/인프라를 사용하면 JARM 해시가 동일하게 유지되므로, 도메인 호핑 후 동일 서버를 재사용하는 사이트를 탐지한다. | P2 | Phase 2-3 | 1) 모든 활성 도메인에 대해 JARM 해시를 수집하고 DB에 저장한다. 2) 동일 JARM 해시를 가진 서로 다른 도메인이 자동으로 클러스터 후보로 플래그된다. 3) 신규 탐지 도메인의 JARM 해시가 기존 폐쇄 도메인과 일치하면 "도메인 호핑 감지" 알림이 전송된다. 4) JARM 해시 변경 이력이 도메인 상세 페이지에서 조회 가능하다. | `jarm` npm 패키지 또는 Python `jarm` 모듈 (Node.js 포트), 10개 TLS 프로브 전송 → 62자 해시 생성, PostgreSQL (jarm_hash 필드 추가) |
+| **FR-DE-034** | Google Analytics / GTM ID 역추적 | 사이트 HTML 소스에서 Google Analytics(UA-XXXXXXX, G-XXXXXXX), Google Tag Manager(GTM-XXXXXXX), Yandex Metrica, Facebook Pixel 등의 트래킹 코드 ID를 추출한다. 동일 트래킹 ID를 사용하는 도메인은 동일 운영자로 추정하여 클러스터링한다. 운영자가 도메인을 변경해도 트래킹 ID를 유지하는 경우가 많아 호핑 추적에 효과적이다. | P1 | Phase 2 | 1) 크롤링 시 HTML에서 GA/GTM/Pixel ID 정규식 패턴(`UA-\d+`, `G-[A-Z0-9]+`, `GTM-[A-Z0-9]+`, `fbq\('init',\s*'(\d+)'`)을 추출하여 DB에 저장한다. 2) 동일 트래킹 ID를 공유하는 2개 이상의 도메인이 자동으로 클러스터링된다. 3) 신규 크롤링 도메인의 트래킹 ID가 기존 폐쇄 도메인과 일치하면 "동일 운영자 감지" 알림이 전송된다. 4) 트래킹 ID별 연관 도메인 목록이 대시보드에서 조회 가능하다. | Cheerio/Playwright `page.content()` HTML 파싱, 정규식 패턴 매칭, PostgreSQL (tracking_ids JSON 필드) |
+| **FR-DE-035** | Passive DNS 데이터 연동 | SecurityTrails, VirusTotal, RiskIQ 등 Passive DNS API를 활용하여 도메인의 과거 DNS 이력(historical A records, historical WHOIS)을 조회한다. 현재 폐쇄된 도메인이 과거에 사용했던 IP 주소를 기반으로, 동일 IP를 현재 사용 중인 다른 도메인을 역추적한다. | P2 | Phase 3 | 1) 폐쇄(DEAD) 상태 도메인에 대해 Passive DNS API로 과거 A 레코드 IP 목록을 조회한다. 2) 해당 IP 주소를 현재 사용 중인 다른 도메인을 역조회(reverse DNS)하여 후보를 추출한다. 3) 후보 도메인 중 도박 관련 키워드/패턴이 일치하면 탐지 큐에 자동 등록된다. 4) Passive DNS 조회 결과가 도메인 상세 페이지의 "이력" 탭에 표시된다. | SecurityTrails API (무료 50쿼리/월), VirusTotal API (무료 500쿼리/일), `got-scraping` (API 호출), 결과 캐싱(Redis, 24시간 TTL) |
 
 ---
 
@@ -111,24 +123,84 @@
 
 ---
 
+## G-2. 판단 시나리오 보강 (Phase 2-3)
+
+> **배경**: 탐지~채증 파이프라인에는 7가지 판단 포인트(AI 콘텐츠 분류, 도메인/URL 분석, 호핑 클러스터링, 폼/CAPTCHA 탐지, 팝업 처리)가 존재한다. 이 중 **실시간 페이지 판단, 위장 사이트 탐지, 다국어 콘텐츠, 동적 콘텐츠, LLM↔규칙 충돌 해소** 5가지 시나리오가 명시적으로 정의되지 않아 보강한다. 월 추가 비용 ~$28, 기존 인프라(Playwright, Claude Haiku) 재활용.
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-DE-051** | 실시간 페이지 유형 판단 | 크롤링 중 페이지 이동 시마다 현재 페이지 유형(MAIN/REGISTER/BETTING/DEPOSIT/INFO/NORMAL)을 실시간 판별한다. 3단계 파이프라인: (1) 규칙 기반 즉시 분류(URL 경로 + HTML 키워드 밀도, <10ms), (2) 의심 시 Claude Haiku 텍스트 분류, (3) 고의심 시 Claude Vision 스크린샷 분류. 페이지 전이를 상태 머신(FSM)으로 추적하여 비정상 전이(뉴스→배팅) 탐지. | P1 | Phase 2 | 1) 1단계 규칙 필터 페이지당 10ms 이내. 2) 페이지 유형 분류 정확도 90%+(200건 검증). 3) FSM으로 사이트당 최대 50페이지 전이 추적. 4) 비정상 전이 탐지 시 자동 플래그. | Playwright `page.on('framenavigated')`, URL 패턴 정규식, HTML 키워드 카운터, Claude Haiku 4.5 (pageType 분류 추가). 월 ~$8. |
+| **FR-DE-052** | 위장/클로킹 사이트 탐지 | 검색엔진 크롤러에게만 도박 콘텐츠를 보여주는 클로킹 사이트, 뉴스/블로그로 위장한 관문(Gateway) 사이트를 탐지한다. (1) 동일 URL에 일반 UA/Googlebot UA로 이중 요청 후 HTML diff 비교(차이 >30% → 클로킹 의심), (2) IIS 악성코드 패턴 시그니처 DB(50개+), (3) 고 DA 사이트(.go.kr, .ac.kr)에서 도박 콘텐츠 발견 시 Parasite SEO 판정, (4) 페이지 내 외부 링크 중 도박 사이트 비율 >50% → 관문사이트 판정. | P1 | Phase 2-3 | 1) 클로킹 탐지율 85%+(100건 검증). 2) 이중 UA 차분 분석 URL당 5초 이내. 3) IIS 악성코드 시그니처 50개+ 등록. 4) 관문사이트 정밀도 80%+. | got-scraping (이중 UA 요청), `diff` 라이브러리, Cheerio (메타태그 파싱), Claude Haiku Vision (시각적 비교). Sucuri 연구 600+ 한국어 도박 SEO 스팸 키워드 DB 활용. 월 ~$9. |
+| **FR-DE-053** | 다국어/혼합 콘텐츠 판단 | 한국어+영어+중국어 혼합 도박 사이트를 분류한다. (1) 언어 감지(`franc` npm): 문단 단위로 언어 식별, 혼합 비율 산출, (2) 다국어 도박 용어 사전: 한/영/중/일 각 50개+, (3) Claude Haiku 다국어 few-shot: 각 언어별 분류 예시 포함, (4) 교차 언어 탐지: 한국어 사이트에서 중국어 도박 API 호출, 다국어 채팅 위젯 탐지. | P2 | Phase 2 | 1) 3개 언어(한/영/중) 용어 사전 각 50개+. 2) 언어 감지 정확도 95%+(문단 단위). 3) 다국어 분류 F1 90%+. 4) 비정상 혼합 패턴 자동 플래그. | `franc` npm (언어 감지), Kiwi (한국어, 기존 FR-DE-043), Claude Haiku 4.5 다국어 프롬프트. 월 ~$3 추가. |
+| **FR-DE-054** | JavaScript 동적 콘텐츠 판단 | JS 렌더링 후에만 보이는 도박 콘텐츠, WebSocket 기반 실시간 배팅 인터페이스, SPA 내부 라우팅 숨김 콘텐츠를 탐지한다. (1) Playwright `networkidle` + 2초 대기로 SPA 완전 렌더링, (2) WebSocket 메시지 감청(`page.on('websocket')`): 배당률 형식, 배팅 슬립 데이터 탐지, (3) 렌더링 전/후 스크린샷 비교: 도박 UI 출현 감지, (4) DOM MutationObserver: 지연 로딩/인터랙션 후 콘텐츠 변화 추적. | P1 | Phase 2 | 1) JS 렌더링 후 콘텐츠 추출 성공률 95%+. 2) WebSocket 연결 탐지·캡처율 90%+. 3) SPA 숨김 도박 섹션 발견율 80%+. 4) 페이지당 분석 30초 이내. | Playwright (기존 FR-DE-005), `page.on('websocket')`, `MutationObserver` (page.evaluate 주입), `sharp`+`pixelmatch` (스크린샷 비교). 월 ~$6 추가. |
+| **FR-DE-055** | LLM↔규칙 판단 충돌 해소 | Claude Haiku(LLM)와 규칙 엔진의 분류 결과가 불일치할 때 최종 판정을 내리는 앙상블 시스템을 구현한다. (1) 신뢰도 가중 투표: `최종 = w_rule×rule_score + w_llm×llm_confidence` (초기 w_rule=0.3, w_llm=0.7), (2) 충돌 유형별 처리: Type A(규칙=도박, LLM=정상) → LLM 우선(단 규칙 >0.8이면 재검토), Type B(규칙=정상, LLM=도박) → LLM 우선(단 화이트리스트면 규칙 우선), (3) 충돌 건 별도 검토 큐, (4) 수동 검토 100건+ 축적 후 가중치 자동 최적화(카테고리별 차등). | P0 | Phase 2 | 1) 충돌 발생률 전체 분류의 15% 이하. 2) 앙상블 정확도가 단일 분류기 대비 3%+ 향상. 3) 충돌 검토 SLA 48시간 이내. 4) 가중치 최적화 후 충돌률 10% 이하. 5) 피드백 루프 주 1회 실행. | 커스텀 가중치 투표 시스템, `conflict_review_queue` 테이블 (기존 FR-DE-013 검토 큐 확장), Celery 주간 가중치 재계산 작업. CTS(Confidence Truth Serum) 기법 참조. 월 ~$2 추가. |
+
+---
+
+## H. 키워드 분류 체계 및 자동 발견 (Phase 2-3)
+
+> **배경**: 불법 도박 사이트는 직접적인 도박 키워드 외에도 "무료 스포츠 중계", "무료 한국 드라마" 같은 **미끼 키워드**로 사용자를 유입시킨다. 현재 FR-DE-001~004의 키워드 50개는 직접 키워드에 한정되어 있어, 미끼 키워드 전략, 한국어 NLP 변형 처리, 키워드 자동 발견 파이프라인이 필요하다. Sucuri 연구에서는 600개 이상의 한국어 도박 SEO 스팸 키워드가 확인되었고, KAIST CSRC의 Gamble Tracker는 500+ 사이트를 2년간 키워드 기반으로 추적한 사례가 있다.
+
+### H-1. 키워드 분류 체계
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-DE-036** | 다층 키워드 분류 체계 | 키워드를 5개 레이어로 분류하는 다층 체계를 구현한다. Layer 1(DIRECT): 직접 도박 용어(토토, 바카라, 카지노), Layer 2(BAIT): 미끼 키워드(무료 스포츠 중계, 무료 드라마), Layer 3(VERIFICATION): 검증/신뢰 키워드(먹튀검증, 안전놀이터), Layer 4(COMMUNITY): 커뮤니티 은어(꽁머니, 충환전, 롤링), Layer 5(SEASONAL): 시즌 이벤트 키워드(월드컵+베팅, KBO+토토). 각 레이어별 탐지 전략과 비용 효율이 다르므로 독립 관리한다. 기존 `category`(도박 유형: 스포츠/카지노/경마)와 `layer`(접근 전략)는 직교 분류로 둘 다 유지한다. | P1 | Phase 2-3 | 1) `keyword_layer` enum이 DIRECT, BAIT, VERIFICATION, COMMUNITY, SEASONAL 5개 값으로 정의된다. 2) 기존 50개 키워드가 레이어별로 재분류된다. 3) 미끼 키워드(Layer 2) 최소 30개가 초기 등록된다. 4) 레이어별 탐지 성공률(TP rate)이 독립 추적된다. 5) 대시보드에서 레이어별 필터링/통계 조회가 가능하다. | `keywords` 테이블에 `layer` enum 컬럼 추가. 초기 시드: "무료 스포츠 중계", "해외축구 무료 중계", "EPL 무료 시청", "무료 한국 드라마 다시보기", "먹튀검증", "안전놀이터", "꽁머니" 등. |
+| **FR-DE-037** | 미끼 키워드 전문 관리 | Layer 2 미끼 키워드를 4가지 하위 유형으로 세분화한다. (1) FREE_STREAMING: 무료 스트리밍 유형(무료 스포츠 중계, 무료 드라마), (2) SEO_SPAM: 도박 사이트가 고트래픽 키워드에 기생하여 노출되는 패턴, (3) POPUP_REDIRECT: 정상 콘텐츠 사이트에서 팝업/리디렉트로 도박 사이트 연결, (4) SOCIAL_MEDIA: SNS/커뮤니티 도박 홍보 미끼. 미끼 키워드별로 연결 도박 사이트와의 관계를 `keyword_site_links` 테이블에 추적하여, 어떤 미끼가 어떤 도박 사이트군으로 연결되는지 맵핑한다. | P1 | Phase 3 | 1) `bait_subtype` enum이 4개 값으로 정의된다. 2) 미끼 키워드와 발견 도박 사이트 간 관계가 keyword_site_links에 기록된다. 3) 미끼 키워드 검색 시 도박 사이트 탐지율 10% 이상인 키워드가 최소 20개 발견된다. 4) 대시보드에서 미끼 키워드별 연결 사이트 맵 조회가 가능하다. | `keyword_site_links` 정션 테이블: keyword_id, site_id, link_type(SEARCH_RESULT/REDIRECT/POPUP/AD_CLICK/META_TAG), search_rank, discovered_at. |
+| **FR-DE-038** | 시즌/이벤트 키워드 자동 활성화 | 스포츠 이벤트 일정에 연동하여 시즌 키워드를 자동 활성화/비활성화한다. 이벤트 시작 7일 전 자동 활성화, 종료 7일 후 자동 비활성화, 이벤트 기간 중 탐지 스캔 빈도 2배 증가. `sports_events` 테이블에 이벤트 캘린더를 관리한다. | P2 | Phase 3 | 1) sports_events 테이블에 이벤트 등록 가능. 2) 이벤트 7일 전 키워드 자동 활성화. 3) 이벤트 종료 7일 후 자동 비활성화. 4) 이벤트 중 스캔 빈도 2배 증가. 5) 이벤트별 탐지 효과 통계 기록. | Celery 주기 작업, `keyword_event_groups` 관계 테이블. 초기 시드: 2026 KBO(3~10월), K리그(2~11월), 월드컵(6~7월), EPL(8~5월). |
+
+### H-2. 키워드 자동 발견 파이프라인
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-DE-039** | 크롤링 사이트 메타태그 키워드 추출 | 탐지된 도박 사이트 HTML에서 키워드 후보를 자동 추출한다. 추출 대상: meta keywords, meta description, title, h1~h3 헤딩, Open Graph 태그. Googlebot User-Agent로 재요청하여 SEO 스팸 메타태그 주입 공격(IIS 악성코드 패턴)도 탐지한다. 추출 키워드는 keyword_candidates 검토 큐에 등록된다. | P1 | Phase 2-3 | 1) HTML에서 메타태그/헤딩/OG 태그 키워드가 자동 추출된다. 2) Googlebot UA 재요청으로 크롤러 전용 메타태그 주입을 탐지한다. 3) 신규 후보가 keyword_candidates 검토 큐에 등록된다. 4) 관리자 승인/반려 가능. 5) 월 10개+ 신규 키워드 자동 발견. | Scrapy 파이프라인 KeywordExtractor 미들웨어, BeautifulSoup4/lxml, Kiwi 형태소 분석기(WASM) 명사 추출. |
+| **FR-DE-040** | Claude AI 키워드 확장 파이프라인 | 기존 키워드를 시드로 Claude Haiku 4.5가 연관 키워드를 주기적으로 자동 생성한다. 4가지 전략: (1) 동의어/유사어, (2) 한국어 변형(초성, 오타, 한영 혼합), (3) 미끼 키워드 발견("이 키워드로 검색하면 도박 사이트가 나올 수 있는 무해한 키워드 제안"), (4) 트렌드 반영(최근 이벤트 기반). 매주 1회 자동 실행, 결과는 검토 큐 등록. | P1 | Phase 3 | 1) 매주 1회 자동 실행. 2) 실행당 30~50개 후보 생성. 3) 검토 큐 등록, 중복 자동 필터링. 4) 월 LLM 비용 $2 이하 (프롬프트 캐싱). | Claude Haiku 4.5 배치 API + 프롬프트 캐싱, JSON 구조화 출력, LangChain `ChatAnthropic`. |
+| **FR-DE-041** | Naver/Google 자동완성 키워드 발견 | 시드 키워드를 Naver/Google 자동완성 API에 입력하여 연관 검색어를 수집하고, Claude Haiku로 도박 관련 키워드를 필터링한다. 한국 사용자의 실제 검색 패턴을 반영하여 최신 트렌드/은어 포착. 매일 1회 시드 상위 20개 실행. | P2 | Phase 3 | 1) 시드 20개에 대해 자동완성 매일 수집. 2) Claude Haiku 필터링. 3) 검토 큐 등록, 중복 제외. 4) 수집 이력 로그 기록. | Naver: `ac.search.naver.com` 비공식 API(무료). Google: `suggestqueries.google.com` (무료). httpx, Claude Haiku 필터링. |
+
+### H-3. 한국어 NLP 특화 처리
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-DE-042** | 한국어 키워드 변형 매핑 엔진 | 한국어 특유의 5가지 변형 패턴을 자동 생성·매핑한다. (1) 초성 변환: "토토"→"ㅌㅌ", "바카라"→"ㅂㅋㄹ", (2) 의도적 오타: "토토"→"토1토","t0t0","토 토","토또", (3) 한영 혼합: "카지노"→"카sino","카지no", (4) 숫자/특수문자 치환: "카지노"→"카지N0","8카라", (5) 형태소 분해: "사설토토사이트"→"사설"+"토토"+"사이트". 원본 1개당 5~15개 변형을 keyword_variants에 저장, 검색 시 포함. | P1 | Phase 2-3 | 1) 5가지 변형 유형 모두 구현. 2) 원본당 평균 5~15개 변형 자동 생성. 3) keyword_variants 테이블에 저장. 4) 검색 시 원본+변형 모두 포함. 5) 변형별 탐지 건수 독립 추적. 6) 초성 "ㅌㅌ"로 "토토" 사이트 탐지. | Python `jamo` (초성 분리), 키보드 매핑 테이블(한영 변환), Kiwi 형태소 분석기(복합명사 분해). keyword_variants: variant_id, keyword_id(FK), variant_text, variant_type(CHOSUNG/TYPO/MIXED_LANG/CHAR_REPLACE/MORPHEME), detection_count. |
+| **FR-DE-043** | Kiwi 형태소 분석 콘텐츠 매칭 | 크롤링 콘텐츠에 Kiwi 형태소 분석기를 적용하여 키워드 매칭 정확도를 향상한다. (1) 연속 문자열 분리: "사설토토사이트추천"→개별 매칭, (2) 조사 제거: "토토에서","토토를"→"토토"로 매칭, (3) 띄어쓰기 정상화: "사 설 토 토"→매칭. Kiwi는 웹텍스트 87% 정확도, 초당 1만 문장 처리. | P2 | Phase 3 | 1) Kiwi가 크롤링 파이프라인에 통합. 2) 형태소 매칭이 단순 문자열 대비 재현율 20%+ 향상. 3) 페이지당 100ms 이내 분석. 4) 연속문자열/조사/띄어쓰기 3가지 모두 동작. | `kiwipiepy` Python 패키지, Scrapy 파이프라인 KiwiAnalyzer 미들웨어, detection_results.raw_data에 morphemes 필드 저장. |
+
+### H-4. 키워드 효과성 추적
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-DE-044** | 키워드별 정밀도 자동 계산 | 각 키워드의 Precision(TP/(TP+FP))을 자동 계산·추적한다. AI 분류 승인=TP, 반려=FP. 정밀도 30% 미만 7일 지속 시 자동 비활성화 후보 플래그, 70% 이상 시 "고효율" 태그. | P1 | Phase 3 | 1) precision, true_positive_count, false_positive_count 필드 추가. 2) AI 분류 승인/반려 시 자동 증가. 3) 30% 미만 7일 → 비활성화 플래그. 4) 70% 이상 → 고효율 태그. 5) 정밀도 랭킹 조회 가능. | Celery 매일 1회 재계산. 최소 5건 분류 결과 존재 시 계산. |
+| **FR-DE-045** | 키워드 비용 효율성 분석 | 키워드별 API 호출 비용 대비 탐지 효과를 분석한다. cost_per_detection = (api_call_count × $0.005) / detection_count. 비용 효율 낮은 키워드 빈도 감소, 높은 키워드 빈도 증가 자동 최적화. | P2 | Phase 3 | 1) api_call_count, cost_per_detection 필드 추가. 2) 비용 자동 계산. 3) 비용 효율 기반 빈도 자동 조정. 4) 레이어별 평균 비용 비교 가능. 5) 월 $50 예산 내 탐지 최대화. | keyword_usage_log: keyword_id, api_type, called_at, result_count, detected_count. |
+| **FR-DE-046** | 시즌 효과 패턴 분석 | 키워드별 탐지 효과의 시간적 패턴(시즌성)을 분석한다. 주단위 통계 축적, 변동 계수(CV=표준편차/평균) 0.5 이상이면 "시즌성 키워드" 자동 태그. FR-DE-038의 학습 데이터로 활용. | P3 | Phase 3 | 1) keyword_weekly_stats에 주간 통계 기록. 2) 3개월 축적 후 시즌 패턴 분석. 3) CV 0.5+ → 시즌성 태그. 4) 최적 활성화 기간 추천. 5) 시계열 차트 조회. | keyword_weekly_stats: keyword_id, week_start, detection_count, precision, api_calls. Celery 주간 집계. |
+
+### H-5. 키워드 후보 검토 및 데이터 모델
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-DE-047** | 키워드 후보 검토 큐 | FR-DE-039/040/041에서 생성된 후보를 관리자가 검토·승인/반려하는 큐. 출처, 추천 레이어, 유사 키존 키워드 표시. 일괄 처리 지원. | P1 | Phase 3 | 1) keyword_candidates 테이블 생성(id, keyword, suggested_layer, source, status, reviewed_by, reviewed_at). 2) 대시보드 검토 목록. 3) 개별/일괄 승인·반려. 4) 승인 시 keywords에 자동 등록. 5) 출처별 승인율 통계. | FastAPI CRUD: GET/PATCH /api/v1/detection/keyword-candidates. PostgreSQL pg_trgm 유사도 검색. |
+| **FR-DE-048** | keywords 테이블 확장 | 기존 keywords 테이블에 다층 분류, 효과성 추적, 키워드 관계 필드를 추가한다. 신규 필드: layer(enum), bait_subtype(enum), precision(Float), true_positive_count(Int), false_positive_count(Int), last_used_at(DateTime), api_call_count(Int), cost_per_detection(Float), parent_keyword_id(FK, 시드-파생 관계), source(enum: MANUAL/AI_GENERATED/META_EXTRACTED/AUTOCOMPLETE/COMMUNITY), effectiveness_tag(enum: HIGH_EFFICIENCY/LOW_EFFICIENCY/SEASONAL/NEW). | P1 | Phase 2-3 | 기존 데이터의 layer는 기본값 DIRECT로 마이그레이션. | Alembic 마이그레이션. parent_keyword_id로 자기참조 관계(시드→파생). |
+| **FR-DE-049** | 6개 신규 테이블 정의 | keyword_variants(한국어 변형), keyword_candidates(검토 큐), keyword_site_links(미끼↔사이트 연결), keyword_weekly_stats(시즌 패턴), sports_events(이벤트 캘린더), keyword_event_groups(이벤트↔키워드 연결) 6개 테이블을 정의한다. | P1 | Phase 2-3 | 6개 테이블 모두 생성 및 FK/인덱스 설정 완료. | 상세 스키마는 08-data-model.md 참조. |
+| **FR-DE-050** | enum 및 타입 확장 | KeywordLayer, BaitSubtype, VariantType, KeywordSource, EffectivenessTag, CandidateStatus, KeywordSiteLinkType enum을 정의하고, 프론트엔드 타입(domain.ts, enums.ts, api.ts)을 동기화한다. DetectionSource enum에 NAVER_AUTOCOMPLETE, GOOGLE_AUTOCOMPLETE, META_EXTRACTION, AI_DISCOVERY, BAIT_KEYWORD, EVENT_KEYWORD를 추가한다. | P1 | Phase 2-3 | 모든 enum이 백엔드/프론트엔드에서 동기화. | Python Enum + TypeScript enum/union type. |
+
+---
+
 ## 요구사항 요약
 
 ### 우선순위별 분류
 
 | 우선순위 | 요구사항 수 | 해당 ID | Phase |
 |---------|-----------|---------|-------|
-| **P0** | 5건 | FR-DE-005, 006, 007, 010, 011, 012, 029 | Phase 1-2 |
-| **P1** | 13건 | FR-DE-013, 015, 016, 017, 020, 021, 023, 024, 025, 026, 027, 028, 030 | Phase 2 |
-| **P2** | 8건 | FR-DE-001, 002, 003, 004, 008, 014, 018, 019 | Phase 3 |
-| **P3** | 2건 | FR-DE-009, 022 | Phase 3 |
+| **P0** | 8건 | FR-DE-005, 006, 007, 010, 011, 012, 029, **055** | Phase 1-2 |
+| **P1** | 27건 | FR-DE-013, 015, 016, 017, 020, 021, 023, 024, 025, 026, 027, 028, 030, 031, 034, 036, 037, 039, 040, 042, 044, 047, 048, 049, 050, **051**, **054** | Phase 2-3 |
+| **P2** | 18건 | FR-DE-001, 002, 003, 004, 008, 014, 018, 019, 032, 033, 035, 038, 041, 043, 045, **052**, **053** | Phase 2-3 |
+| **P3** | 3건 | FR-DE-009, 022, 046 | Phase 3 |
 
 ### Phase별 분류
 
 | Phase | 핵심 기능 | 요구사항 |
 |-------|----------|---------|
 | **Phase 1** (MVP) | AI 콘텐츠 분류 기본 파이프라인, 결과 저장 | FR-DE-010, 011, 012, 029 |
-| **Phase 2** (자동 채증) | 크롤링 인프라, 도메인 추적, 스케줄링, 프록시 | FR-DE-005, 006, 007, 013, 015, 016, 017, 020, 021, 023, 024, 025, 026, 027, 028, 030 |
-| **Phase 3** (AI 탐지) | 검색 기반 탐지, 네트워크 분석, ML 하이브리드, SNS 수집 | FR-DE-001, 002, 003, 004, 008, 009, 014, 018, 019, 022 |
+| **Phase 2** (자동 채증) | 크롤링 인프라, 도메인 추적, 인프라 핑거프린팅, 키워드 체계, 스케줄링, 프록시 | FR-DE-005, 006, 007, 013, 015, 016, 017, 020, 021, 023, 024, 025, 026, 027, 028, 030, 031, 032, 033, 034, **036**, **039**, **042**, **048**, **049**, **050** |
+| **Phase 3** (AI 탐지) | 검색 기반 탐지, 키워드 자동 발견, 한국어 NLP, 네트워크 분석, ML 하이브리드, SNS 수집, Passive DNS | FR-DE-001, 002, 003, 004, 008, 009, 014, 018, 019, 022, 035, **037**, **038**, **040**, **041**, **043**, **044**, **045**, **046**, **047** |
 
 ### 기술 의존성 맵
 
@@ -143,9 +215,28 @@ Phase 2:
   got-scraping → FR-DE-006 → FR-DE-015, 017
   프록시 서비스 → FR-DE-028
 
+Phase 2 (인프라 핑거프린팅):
+  FR-DE-015 (생존 체크) → FR-DE-031 (SSL SAN 분석)
+  FR-DE-031 → FR-DE-032 (CT 로그 모니터링)
+  FR-DE-005 (크롤링) → FR-DE-034 (GA/GTM ID 역추적)
+  FR-DE-015 + FR-DE-031 → FR-DE-033 (JARM 핑거프린팅)
+
+Phase 2 (키워드 체계):
+  FR-DE-036 (다층 분류) → FR-DE-048 (테이블 확장) + FR-DE-049 (신규 테이블)
+  FR-DE-042 (한국어 변형) → keyword_variants 테이블
+  FR-DE-005 (크롤링) → FR-DE-039 (메타태그 키워드 추출)
+
 Phase 3:
   Google Custom Search API → FR-DE-001 → FR-DE-002, 003, 004
   FR-DE-010 (Claude 분류) → FR-DE-014 (ML 하이브리드 전환)
-  FR-DE-015, 016, 017 → FR-DE-019 (도메인 클러스터링)
+  FR-DE-015, 016, 017, 031, 033, 034 → FR-DE-019 (도메인 클러스터링)
+  FR-DE-016 (DNS 변경) → FR-DE-035 (Passive DNS 역추적)
   URLBERT/URLTran → FR-DE-022
+
+Phase 3 (키워드 자동 발견):
+  FR-DE-036 (분류) → FR-DE-037 (미끼 관리) + FR-DE-038 (시즌 이벤트)
+  FR-DE-039 (메타태그) + FR-DE-040 (Claude AI) + FR-DE-041 (자동완성) → FR-DE-047 (검토 큐)
+  FR-DE-047 → keywords 테이블 등록
+  FR-DE-001 (검색) + FR-DE-010 (분류) → FR-DE-044 (정밀도) + FR-DE-045 (비용)
+  FR-DE-044 → FR-DE-046 (시즌 패턴)
 ```

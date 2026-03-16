@@ -77,6 +77,24 @@ export const mockKeywords: Keyword[] = kwData.map((kw, i) => ({
   isActive: i < 45, // last 5 are inactive
   detectionCount: kw.detectionCount,
   createdById: i % 3 === 0 ? 'user-001' : i % 3 === 1 ? 'user-002' : 'user-004',
+
+  // 다층 분류 (FR-DE-036)
+  layer: 'DIRECT' as const,
+  baitSubtype: null,
+
+  // 효과성 추적 (FR-DE-044, 045)
+  precision: kw.detectionCount > 200 ? 0.72 + Math.random() * 0.2 : 0.35 + Math.random() * 0.4,
+  truePositiveCount: Math.floor(kw.detectionCount * 0.7),
+  falsePositiveCount: Math.floor(kw.detectionCount * 0.3),
+  lastUsedAt: new Date(2026, 2, 10 + (i % 7)),
+  apiCallCount: kw.detectionCount * 3,
+  costPerDetection: 0.015 + Math.random() * 0.05,
+
+  // 키워드 계층
+  parentKeywordId: null,
+  source: 'MANUAL' as const,
+  effectivenessTag: kw.detectionCount > 300 ? ('HIGH_EFFICIENCY' as const) : null,
+
   createdAt: new Date(2025, 8 + Math.floor(i / 20), 1 + (i % 28), 10, 0, 0),
   updatedAt: new Date(2026, 2, 1 + (i % 14), 10, 0, 0),
 }));

@@ -420,14 +420,18 @@ export interface DetectionResultItem {
   createdAt: string;
 }
 
-/** 키워드 목록 필터 */
+/** 키워드 목록 필터 (확장: FR-DE-036~050) */
 export interface KeywordListFilter extends PaginatedRequest {
   category?: string;
   search?: string;
   isActive?: boolean;
+  layer?: import('./domain').KeywordLayer;
+  baitSubtype?: import('./domain').BaitSubtype;
+  source?: import('./domain').KeywordSource;
+  effectivenessTag?: import('./domain').EffectivenessTag;
 }
 
-/** 키워드 항목 */
+/** 키워드 항목 (확장) */
 export interface KeywordItem {
   id: string;
   keyword: string;
@@ -436,6 +440,14 @@ export interface KeywordItem {
   lastUsedAt: string | null;
   detectionCount: number;
   precision: number | null;
+  layer: import('./domain').KeywordLayer;
+  baitSubtype: import('./domain').BaitSubtype | null;
+  truePositiveCount: number;
+  falsePositiveCount: number;
+  costPerDetection: number | null;
+  source: import('./domain').KeywordSource;
+  effectivenessTag: import('./domain').EffectivenessTag | null;
+  variantCount?: number;
 }
 
 /** POST /api/detection/keywords 요청 */
@@ -443,8 +455,52 @@ export interface CreateKeywordRequest {
   keywords: Array<{
     keyword: string;
     category: string;
+    layer?: import('./domain').KeywordLayer;
+    baitSubtype?: import('./domain').BaitSubtype;
   }>;
   autoSuggest?: boolean;
+}
+
+/** POST /api/detection/keywords/expand 요청 (FR-DE-040) */
+export interface KeywordExpandRequest {
+  seedKeywordIds: string[];
+  strategies?: Array<'synonym' | 'variant' | 'bait_discovery' | 'trend'>;
+}
+
+/** 키워드 후보 검토 요청 (FR-DE-047) */
+export interface ReviewKeywordCandidateRequest {
+  status: 'APPROVED' | 'REJECTED';
+  layer?: import('./domain').KeywordLayer;
+  category?: string;
+}
+
+/** 일괄 검토 요청 */
+export interface BatchReviewKeywordCandidatesRequest {
+  candidateIds: string[];
+  status: 'APPROVED' | 'REJECTED';
+}
+
+/** 키워드 효과성 리포트 (FR-DE-044, 045) */
+export interface KeywordEffectivenessReport {
+  layerStats: Array<{
+    layer: import('./domain').KeywordLayer;
+    keywordCount: number;
+    avgPrecision: number | null;
+    avgCostPerDetection: number | null;
+    totalDetections: number;
+  }>;
+  topKeywords: KeywordItem[];
+  bottomKeywords: KeywordItem[];
+  period: string;
+}
+
+/** 스포츠 이벤트 생성 요청 (FR-DE-038) */
+export interface CreateSportsEventRequest {
+  name: string;
+  sportType: string;
+  startDate: string;
+  endDate: string;
+  keywordIds?: string[];
 }
 
 /** 키워드 추가 응답 */

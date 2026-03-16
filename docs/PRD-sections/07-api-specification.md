@@ -604,6 +604,42 @@ GET /api/sites?status=active&category=sports_betting&search=토토&createdAfter=
 | **FR-API-029** | DELETE /api/detection/keywords/:id -- 키워드 삭제 | 등록된 키워드를 소프트 삭제(비활성화)한다. 물리적 삭제가 아닌 `isActive: false`로 상태를 변경하여 탐지 실행에서 제외한다. 키워드의 과거 탐지 이력과 통계는 보존한다. | P2 | Phase 3 | 1. 삭제 요청 시 키워드가 비활성화되고 HTTP 204를 반환한다<br>2. 비활성화된 키워드는 탐지 스캔에서 자동 제외된다<br>3. 존재하지 않는 키워드 ID 요청 시 HTTP 404를 반환한다<br>4. 과거 탐지 이력과 통계가 보존된다<br>5. 삭제 이벤트가 감사 로그에 기록된다 | SQLAlchemy soft delete (`is_active` 필드), 감사 로그 |
 | **FR-API-030** | GET /api/detection/domains/:id/status -- 도메인 생존 상태 조회 | 특정 도메인의 현재 생존 상태와 상태 변경 이력을 조회한다. DNS 조회 결과, HTTP 응답 상태, Cloudflare 방어 여부, 마지막 체크 시각, 생존 기간(최초 감지일부터 현재까지), 상태 변경 타임라인을 반환한다. | P1 | Phase 2 | 1. 도메인 ID로 요청 시 현재 생존 상태가 반환된다<br>2. 응답에 `currentStatus`(`alive`, `dead`, `redirected`, `cloudflare_blocked`), `lastCheckedAt`, `upSince`, `downSince` 필드가 포함된다<br>3. `includeHistory=true` 시 상태 변경 타임라인이 포함된다<br>4. DNS 레코드(A, CNAME, NS) 현재값이 포함된다<br>5. `checkNow=true` 파라미터로 즉시 상태 체크를 트리거할 수 있다 | Python `dns.resolver` (dnspython), httpx (HTTP HEAD), Redis 캐시 (최근 상태), Celery (즉시 체크) |
 
+### D-2. 채증 스케줄 및 통계 API (Phase 2-3)
+
+> **배경**: 운영자가 자동 채증 스케줄을 관리하고, 채증 성과를 날짜/시간별로 직관적으로 확인하기 위한 API. FR-EC-035~038, FR-UI-036~038 지원.
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-API-046** | GET /api/investigation-schedules -- 스케줄 목록 조회 | 등록된 채증 스케줄 목록을 조회한다. 각 스케줄의 반복 유형, 시간대, 대상 필터, 활성 상태, 다음 실행 시각, 최근 실행 결과 요약을 포함한다. | P1 | Phase 2-3 | 1) 모든 스케줄이 목록으로 반환. 2) 각 스케줄에 nextRunAt, lastRunAt, runCount 포함. 3) isActive 필터 지원. | SQLAlchemy InvestigationSchedule 모델. |
+| **FR-API-047** | POST /api/investigation-schedules -- 스케줄 생성 | 새 채증 스케줄을 생성한다. name, scheduleType, cronExpression/startTime/endTime, targetFilter, scope, maxConcurrent를 입력받는다. 생성 즉시 nextRunAt이 자동 계산된다. | P1 | Phase 2-3 | 1) 6가지 scheduleType 지원. 2) 생성 시 nextRunAt 자동 계산. 3) HTTP 201 반환. 4) admin/operator만 생성 가능. | croniter (크론 파싱), Celery Beat 동적 스케줄 등록. |
+| **FR-API-048** | PATCH /api/investigation-schedules/:id -- 스케줄 수정 | 스케줄 설정을 수정한다. 부분 업데이트(PATCH) 지원. isActive 토글로 활성화/비활성화. 수정 시 nextRunAt 재계산. | P1 | Phase 2-3 | 1) 부분 업데이트 지원. 2) isActive 변경 즉시 반영. 3) nextRunAt 재계산. | SQLAlchemy partial update. |
+| **FR-API-049** | DELETE /api/investigation-schedules/:id -- 스케줄 삭제 | 스케줄을 삭제한다. 실행 이력(schedule_run_logs)도 CASCADE 삭제. 진행 중인 채증은 완료까지 유지. | P1 | Phase 2-3 | 1) 삭제 시 HTTP 204. 2) 실행 이력 CASCADE 삭제. 3) 존재하지 않는 ID는 HTTP 404. | SQLAlchemy CASCADE. |
+| **FR-API-050** | GET /api/investigation-schedules/:id/runs -- 실행 이력 조회 | 특정 스케줄의 실행 이력을 조회한다. 시작/종료 시각, 처리 건수(전체/성공/실패), 소요 시간. 최근 순 페이지네이션. | P1 | Phase 2-3 | 1) 최근 순 정렬. 2) 페이지네이션 지원. 3) 각 실행의 상세 통계 포함. | SQLAlchemy ScheduleRunLog. |
+| **FR-API-051** | GET /api/investigations/stats -- 채증 전용 통계 | 기간별 채증 통계를 반환한다. (1) KPI 4종: 오늘/이번주 건수, 성공률, 평균 소요시간. (2) 일별 채증 건수 (캘린더 히트맵용). (3) 시간대별 분포 (0~23시, 자동/수동 구분). (4) 채증 추이 (일별 성공/실패 스택). | P1 | Phase 2-3 | 1) period 파라미터 (7d/30d/90d/custom). 2) KPI에 전일/전주 대비 포함. 3) dailyCounts 배열 (캘린더용). 4) hourlyDistribution 배열. | PostgreSQL 집계 쿼리, Redis 캐싱(5분 TTL). |
+| **FR-API-052** | GET /api/investigations/stats/daily/:date -- 일별 채증 상세 | 특정 날짜의 채증 결과 타임라인을 반환한다. 시각, 사이트 URL, 도달 단계, 성공/실패, 스크린샷 URL 목록. 결과/단계/모드 필터. | P1 | Phase 2-3 | 1) date 파라미터 (YYYY-MM-DD). 2) 시간순 정렬. 3) 각 항목에 screenshotUrls 포함. 4) result/stage/mode 필터. | SQLAlchemy Investigation JOIN EvidenceFile. |
+| **FR-API-053** | POST /api/investigations/batch -- 일괄 채증 시작 | 여러 사이트에 대해 한번에 채증을 시작한다. siteIds 배열(최대 50건), mode, scope, priority를 입력받는다. batch_id로 묶어서 반환. | P1 | Phase 2 | 1) siteIds 최대 50건. 2) 각 사이트별 Investigation 생성. 3) 동일 batch_id 할당. 4) HTTP 202 + batch_id 반환. 5) 큐에 순차 투입. | Investigation.batch_id 필드, BullMQ 일괄 등록. |
+
+---
+
+### E-2. 키워드 확장 API (Phase 2-3)
+
+> **배경**: 다층 키워드 체계(FR-DE-036~050) 도입에 따라 키워드 변형, 자동 발견 후보 검토, 효과성 추적, 시즌 이벤트 관리를 위한 API가 필요하다.
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-API-034** | GET /api/detection/keywords (확장) -- 다층 키워드 조회 | 기존 FR-API-027을 확장하여 `layer`(DIRECT/BAIT/VERIFICATION/COMMUNITY/SEASONAL), `baitSubtype`, `source`, `effectivenessTag` 필터를 추가한다. 응답에 layer, precision, truePositiveCount, falsePositiveCount, costPerDetection 필드를 포함한다. | P1 | Phase 2-3 | 1) layer, baitSubtype, source, effectivenessTag 필터 동작. 2) 응답에 확장 필드 포함. 3) 레이어별 통계 집계 포함. | SQLAlchemy 복합 필터 쿼리. |
+| **FR-API-035** | POST /api/detection/keywords/expand -- AI 키워드 확장 | Claude Haiku 4.5로 시드 키워드에서 연관 키워드를 자동 생성한다. 4가지 전략(동의어, 변형, 미끼 발견, 트렌드)을 선택 가능. 결과는 keyword_candidates 검토 큐에 자동 등록된다. | P1 | Phase 3 | 1) 시드 키워드 ID 배열 입력. 2) 전략 선택 가능. 3) 30~50개 후보 생성. 4) 검토 큐 자동 등록. 5) 비동기 실행(HTTP 202). | Claude Haiku 4.5 배치 API, 프롬프트 캐싱, Celery. |
+| **FR-API-036** | GET /api/detection/keywords/:id/variants -- 키워드 변형 목록 | 특정 키워드의 한국어 변형(초성, 오타, 한영 혼합, 숫자 치환, 형태소 분해) 목록을 조회한다. 변형별 탐지 건수를 포함한다. | P1 | Phase 2-3 | 1) variant_type별 필터 동작. 2) 변형별 detection_count 포함. 3) is_auto_generated 구분. | SQLAlchemy KeywordVariant 모델. |
+| **FR-API-037** | POST /api/detection/keywords/:id/variants/generate -- 변형 자동 생성 | 특정 키워드에 대해 5가지 한국어 변형을 자동 생성한다. 기존 변형과 중복되는 결과는 제외하고 신규 변형만 저장한다. | P1 | Phase 2-3 | 1) 5가지 유형 변형 자동 생성. 2) 중복 제외. 3) 생성 건수 응답. | Python `jamo`(초성), 키보드 매핑(한영), Kiwi(형태소). |
+| **FR-API-038** | GET /api/detection/keyword-candidates -- 후보 검토 큐 | 자동 발견된 키워드 후보 목록을 조회한다. status(PENDING/APPROVED/REJECTED), source(META_EXTRACTION/AI_GENERATION/AUTOCOMPLETE/COMMUNITY), suggested_layer 필터를 지원한다. | P1 | Phase 3 | 1) status, source, suggested_layer 필터 동작. 2) 유사 기존 키워드 ID 포함. 3) 페이지네이션 지원. | SQLAlchemy KeywordCandidate 모델, pg_trgm 유사도. |
+| **FR-API-039** | PATCH /api/detection/keyword-candidates/:id -- 후보 승인/반려 | 키워드 후보를 개별 승인 또는 반려한다. 승인 시 keywords 테이블에 자동 등록되고, approved_keyword_id가 설정된다. | P1 | Phase 3 | 1) status를 APPROVED/REJECTED로 변경. 2) 승인 시 keywords 자동 생성. 3) 검토자/검토 시각 기록. | SQLAlchemy 트랜잭션. |
+| **FR-API-040** | POST /api/detection/keyword-candidates/batch-review -- 일괄 승인/반려 | 여러 후보를 일괄 승인 또는 반려한다. 최대 50건 동시 처리. | P1 | Phase 3 | 1) 최대 50건 일괄 처리. 2) 각 후보별 성공/실패 결과 반환. 3) 부분 실패 시 성공건만 반영. | SQLAlchemy bulk_update. |
+| **FR-API-041** | GET /api/detection/keywords/effectiveness -- 효과성 리포트 | 키워드별 정밀도, 비용 효율, TP/FP 비율을 종합한 효과성 리포트를 반환한다. 레이어별 집계, 상위/하위 10개 키워드 랭킹을 포함한다. | P2 | Phase 3 | 1) 레이어별 평균 정밀도/비용. 2) 상위/하위 10개 랭킹. 3) 기간 필터(주/월/전체). | PostgreSQL 집계 쿼리, 캐싱(Redis 5분 TTL). |
+| **FR-API-042** | GET /api/detection/keywords/:id/weekly-stats -- 주간 통계 | 특정 키워드의 주간 탐지 통계를 시계열로 반환한다. detection_count, precision, api_calls 추이. | P2 | Phase 3 | 1) 기간 필터(최근 4주/12주/전체). 2) 주간 통계 배열 반환. 3) 시즌성 판별(CV값) 포함. | SQLAlchemy KeywordWeeklyStats, 변동계수 계산. |
+| **FR-API-043** | GET /api/detection/sports-events -- 이벤트 캘린더 조회 | 스포츠 이벤트 목록을 조회한다. 현재 활성 이벤트, 예정 이벤트, 종료 이벤트 필터. 각 이벤트별 연결 키워드 수를 포함한다. | P2 | Phase 3 | 1) 상태 필터(active/upcoming/past). 2) sportType 필터. 3) 연결 키워드 수 포함. | SQLAlchemy SportsEvent + COUNT 집계. |
+| **FR-API-044** | POST /api/detection/sports-events -- 이벤트 등록 | 새 스포츠 이벤트를 등록하고 키워드를 연결한다. | P2 | Phase 3 | 1) name, sportType, startDate, endDate, keywordIds 입력. 2) 키워드 연결. 3) HTTP 201 반환. | SQLAlchemy SportsEvent + KeywordEventGroup. |
+| **FR-API-045** | GET /api/detection/keywords/:id/linked-sites -- 연결 사이트 목록 | 특정 키워드(특히 미끼 키워드)로 발견된 도박 사이트 목록을 조회한다. 연결 유형(검색결과/리디렉트/팝업)별 필터. | P1 | Phase 3 | 1) link_type 필터. 2) search_rank 포함. 3) 사이트 기본 정보 포함. 4) 페이지네이션. | SQLAlchemy KeywordSiteLink JOIN Site. |
+
 ---
 
 ## F. 수동 개입 API (Phase 2)
