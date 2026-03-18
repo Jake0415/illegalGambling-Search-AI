@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 from app.api.v1.router import api_router
 from app.config import settings
@@ -23,6 +24,9 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
 )
+
+# Nginx 프록시 헤더 처리 (X-Forwarded-For, X-Forwarded-Proto)
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts=["*"])
 
 # CORS
 app.add_middleware(

@@ -2,6 +2,10 @@
 # 사용법: docker compose -f docker-compose.yml -f docker-compose.prod.yml --env-file .env.prod up -d
 
 services:
+  nginx:
+    volumes:
+      - nginx_ssl:/etc/nginx/ssl
+
   postgres:
     ports: []
     environment:
@@ -11,22 +15,26 @@ services:
     ports: []
 
   minio:
-    ports:
-      - "9001:9001"
+    ports: []
     environment:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
 
   backend:
     build:
       target: prod
+    expose:
+      - "8000"
     volumes: []
     environment:
       DEBUG: "false"
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
+      CORS_ORIGINS: '["https://${DOMAIN:-localhost}"]'
 
   frontend:
     build:
       target: prod
       args:
-        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
+        NEXT_PUBLIC_API_URL: https://${DOMAIN:-localhost}/api
+    expose:
+      - "3000"
     volumes: []

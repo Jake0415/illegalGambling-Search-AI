@@ -1,5 +1,25 @@
 services:
   # ════════════════════════════════════════
+  # Reverse Proxy (SSL Termination)
+  # ════════════════════════════════════════
+
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: gambleguard-nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - nginx_ssl:/etc/nginx/ssl
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - gambleguard
+
+  # ════════════════════════════════════════
   # 인프라 서비스
   # ════════════════════════════════════════
 
@@ -11,7 +31,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-gambleguard_dev}
       POSTGRES_DB: ${POSTGRES_DB:-gambleguard}
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "127.0.0.1:${POSTGRES_PORT:-5432}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -26,7 +46,7 @@ services:
     image: redis:7-alpine
     container_name: gambleguard-redis
     ports:
-      - "${REDIS_PORT:-6379}:6379"
+      - "127.0.0.1:${REDIS_PORT:-6379}:6379"
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -42,8 +62,8 @@ services:
       MINIO_ROOT_USER: ${MINIO_ROOT_USER:-minioadmin}
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-minioadmin}
     ports:
-      - "9000:9000"
-      - "9001:9001"
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
     volumes:
       - minio_data:/data
     command: server /data --console-address ":9001"
@@ -90,10 +110,10 @@ services:
       S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD:-minioadmin}
       S3_BUCKET: evidence
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-dev-secret-key-change-in-production}
-      CORS_ORIGINS: '["http://localhost:3000"]'
+      CORS_ORIGINS: '["https://localhost"]'
       DEBUG: "true"
-    ports:
-      - "8000:8000"
+    expose:
+      - "8000"
     volumes:
       - ./backend:/app
     depends_on:
@@ -119,10 +139,10 @@ services:
       target: dev
     container_name: gambleguard-web
     environment:
-      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_URL: https://localhost/api
       WATCHPACK_POLLING: "true"
-    ports:
-      - "3000:3000"
+    expose:
+      - "3000"
     volumes:
       - ./frontend:/app
       - frontend_nodemodules:/app/node_modules
@@ -140,6 +160,7 @@ volumes:
   pgdata:
   minio_data:
   frontend_nodemodules:
+  nginx_ssl:
 
 networks:
   gambleguard:

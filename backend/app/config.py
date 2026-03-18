@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     S3_REGION: str = "us-east-1"
 
     # CORS
-    CORS_ORIGINS: list[str] = ["http://localhost:3000"]
+    CORS_ORIGINS: list[str] = ["https://localhost"]
 
     # Login Security
     LOGIN_MAX_ATTEMPTS: int = 5
