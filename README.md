@@ -1,36 +1,57 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# GambleGuard - 불법 도박 사이트 조사 시스템
 
-## Getting Started
+불법 도박 사이트를 자동으로 탐지하고 증거를 수집하는 AI 기반 조사 시스템입니다.
 
-First, run the development server:
+## 기술 스택
+
+- **Frontend**: Next.js 15.5.3 + React 19 + TailwindCSS v4 + shadcn/ui
+- **Backend**: FastAPI + SQLAlchemy + Alembic
+- **Database**: PostgreSQL 16
+- **Cache**: Redis 7
+- **Storage**: MinIO (S3 호환)
+- **Infra**: Docker Compose
+
+## 시작하기
+
+### 사전 요구사항
+
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (WSL 2 백엔드 포함)
+
+### 실행
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+docker compose up -d        # 전체 서비스 시작
+docker compose down          # 전체 서비스 중지
+docker compose down -v       # 전체 서비스 중지 + 볼륨 삭제
+docker compose logs -f       # 전체 로그 확인
+docker compose logs -f backend  # 백엔드 로그만 확인
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 접속 정보
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| 서비스 | URL | 설명 |
+|--------|-----|------|
+| Frontend | http://localhost:3000 | Next.js 웹 애플리케이션 |
+| Backend API | http://localhost:8000/docs | FastAPI Swagger 문서 |
+| MinIO Console | http://localhost:9001 | 파일 스토리지 관리 콘솔 |
+| PostgreSQL | localhost:5432 | DB 직접 접속 (개발용) |
+| Redis | localhost:6379 | 캐시 직접 접속 (개발용) |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 로컬 개발 (Docker 없이)
 
-## Learn More
+```bash
+# Frontend
+cd frontend
+npm install
+npm run dev
 
-To learn more about Next.js, take a look at the following resources:
+# Backend
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 프로젝트 문서
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [PRD (요구사항 정의서)](docs/PRD.md)
+- [개발 로드맵](docs/ROADMAP.md)

@@ -33,7 +33,7 @@
 | **PRD 참조** | FR-UI-001~035 (06절 전체 라우트 구조) |
 
 **구현 사항:**
-- [ ] 1. **22개 라우트 파일 생성**: PRD 06절 기반 `app/` 디렉토리 하위에 모든 `page.tsx` 생성 (빈 컴포넌트 + 페이지 제목만)
+- [x] 1. **22개 라우트 파일 생성**: PRD 06절 기반 `app/` 디렉토리 하위에 모든 `page.tsx` 생성 (빈 컴포넌트 + 페이지 제목만)
   ```
   /                              → app/page.tsx (랜딩 페이지, 비인증) 또는 app/(dashboard)/page.tsx (대시보드, 인증)
   /sites                         → app/(dashboard)/sites/page.tsx
@@ -61,9 +61,9 @@
   /login                         → app/(auth)/login/page.tsx (기존 유지)
   /signup                        → app/(auth)/signup/page.tsx (기존 유지)
   ```
-- [ ] 2. **라우트 그룹 레이아웃 분리**: `(dashboard)` 그룹에 인증 필요 레이아웃, `(auth)` 그룹에 비인증 레이아웃, `/setup`은 독립 레이아웃 적용
-- [ ] 3. **각 빈 페이지에 메타데이터 설정**: `generateMetadata()` 또는 `export const metadata`로 페이지별 title 설정
-- [ ] 4. **`not-found.tsx`, `error.tsx`, `loading.tsx` 글로벌 파일 생성**: App Router 에러/로딩 핸들링 골격
+- [x] 2. **라우트 그룹 레이아웃 분리**: `(dashboard)` 그룹에 인증 필요 레이아웃, `(auth)` 그룹에 비인증 레이아웃, `/setup`은 독립 레이아웃 적용
+- [x] 3. **각 빈 페이지에 메타데이터 설정**: `generateMetadata()` 또는 `export const metadata`로 페이지별 title 설정
+- [x] 4. **`not-found.tsx`, `error.tsx`, `loading.tsx` 글로벌 파일 생성**: App Router 에러/로딩 핸들링 골격
 
 ---
 
@@ -76,11 +76,11 @@
 | **PRD 참조** | FR-DM-001~020 (08절), FR-API-001~049 (07절) |
 
 **구현 사항:**
-- [ ] 1. **도메인 타입 정의** (`src/types/domain.ts`): `Site`, `Investigation`, `EvidenceFile`, `HashRecord`, `Timestamp`, `AuditLog`, `SmsNumber`, `SmsMessage`, `ManualIntervention`, `Keyword`, `DetectionResult`, `ClassificationResult`, `DomainHistory`, `DomainCluster`, `User`, `SystemSetting`, `PopupPattern` 인터페이스
-- [ ] 2. **Enum 타입 정의** (`src/types/enums.ts`): `SiteStatus`, `SiteCategory`, `InvestigationStatus`, `EvidenceFileType`, `HashAlgorithm`, `VerificationStatus`, `TimestampType`, `AuditAction`, `SmsProvider`, `SmsNumberStatus`, `InterventionType`, `InterventionStatus`, `DetectionSource`, `ClassificationModel`, `ReviewStatus`, `DomainStatus`, `UserRole` 등 PRD 08절 전체 enum
-- [ ] 3. **API 요청/응답 타입 정의** (`src/types/api.ts`): 공통 응답 래퍼(`ApiResponse<T>`, `PaginatedResponse<T>`, `ApiError`), 각 엔드포인트별 Request/Response DTO
-- [ ] 4. **폼 스키마 타입 정의** (`src/types/forms.ts`): Zod 스키마로 로그인, 사이트 등록, 채증 실행, 사용자 생성, 시스템 설정 등 폼 유효성 검증 스키마 정의
-- [ ] 5. **타입 barrel export** (`src/types/index.ts`): 모든 타입 모듈의 재수출
+- [x] 1. **도메인 타입 정의** (`src/types/domain.ts`): `Site`, `Investigation`, `EvidenceFile`, `HashRecord`, `Timestamp`, `AuditLog`, `SmsNumber`, `SmsMessage`, `ManualIntervention`, `Keyword`, `DetectionResult`, `ClassificationResult`, `DomainHistory`, `DomainCluster`, `User`, `SystemSetting`, `PopupPattern` 인터페이스
+- [x] 2. **Enum 타입 정의** (`src/types/enums.ts`): `SiteStatus`, `SiteCategory`, `InvestigationStatus`, `EvidenceFileType`, `HashAlgorithm`, `VerificationStatus`, `TimestampType`, `AuditAction`, `SmsProvider`, `SmsNumberStatus`, `InterventionType`, `InterventionStatus`, `DetectionSource`, `ClassificationModel`, `ReviewStatus`, `DomainStatus`, `UserRole` 등 PRD 08절 전체 enum
+- [x] 3. **API 요청/응답 타입 정의** (`src/types/api.ts`): 공통 응답 래퍼(`ApiResponse<T>`, `PaginatedResponse<T>`, `ApiError`), 각 엔드포인트별 Request/Response DTO
+- [x] 4. **폼 스키마 타입 정의** (`src/types/forms.ts`): Zod 스키마로 로그인, 사이트 등록, 채증 실행, 사용자 생성, 시스템 설정 등 폼 유효성 검증 스키마 정의
+- [x] 5. **타입 barrel export** (`src/types/index.ts`): 모든 타입 모듈의 재수출
 
 ---
 
@@ -93,12 +93,12 @@
 | **PRD 참조** | FR-DM-001~020 (08절 전체) |
 
 **구현 사항:**
-- [ ] 1. **Prisma 스키마 작성** (`prisma/schema.prisma`): PRD 08절의 21개 테이블 전체 스키마를 단일 파일에 정의. UUID v7, snake_case 매핑, 소프트 삭제, 감사 필드, JSON 필드, Enum 타입 모두 반영
-- [ ] 2. **핵심 엔티티 (A절)**: `Site`, `Investigation`, `EvidenceFile` 모델 + 관계 정의 + 인덱스
-- [ ] 3. **증거 무결성 (B절)**: `HashRecord`, `Timestamp`, `AuditLog` 모델 (해시 체인 `prevHash` 필드 포함)
-- [ ] 4. **SMS/수동개입/탐지/도메인/사용자/설정/팝업 (C~I절)**: `SmsNumber`, `SmsMessage`, `ManualInterventionQueue`, `Keyword`, `DetectionResult`, `ClassificationResult`, `DomainHistory`, `DomainCluster`, `SiteDomainCluster`, `User`, `Account`, `Session`, `VerificationToken`, `SystemSetting`, `PopupPattern` 모델
-- [ ] 5. **인덱스 전략 (J절)**: FR-DM-019 기준 모든 단일/복합 인덱스 정의
-- [ ] 6. **Seed 스크립트 골격** (`prisma/seed.ts`): 초기 슈퍼어드민 계정, 기본 시스템 설정 키, 초기 키워드 시드 데이터 템플릿 작성 (실제 DB 연동은 Phase 3)
+- [x] 1. **Prisma 스키마 작성** (`prisma/schema.prisma`): PRD 08절의 21개 테이블 전체 스키마를 단일 파일에 정의. UUID v7, snake_case 매핑, 소프트 삭제, 감사 필드, JSON 필드, Enum 타입 모두 반영
+- [x] 2. **핵심 엔티티 (A절)**: `Site`, `Investigation`, `EvidenceFile` 모델 + 관계 정의 + 인덱스
+- [x] 3. **증거 무결성 (B절)**: `HashRecord`, `Timestamp`, `AuditLog` 모델 (해시 체인 `prevHash` 필드 포함)
+- [x] 4. **SMS/수동개입/탐지/도메인/사용자/설정/팝업 (C~I절)**: `SmsNumber`, `SmsMessage`, `ManualInterventionQueue`, `Keyword`, `DetectionResult`, `ClassificationResult`, `DomainHistory`, `DomainCluster`, `SiteDomainCluster`, `User`, `Account`, `Session`, `VerificationToken`, `SystemSetting`, `PopupPattern` 모델
+- [x] 5. **인덱스 전략 (J절)**: FR-DM-019 기준 모든 단일/복합 인덱스 정의
+- [x] 6. **Seed 스크립트 골격** (`prisma/seed.ts`): 초기 슈퍼어드민 계정, 기본 시스템 설정 키, 초기 키워드 시드 데이터 템플릿 작성 (실제 DB 연동은 Phase 3)
 
 ---
 
@@ -111,12 +111,12 @@
 | **PRD 참조** | FR-UI-033 (반응형), FR-UI-034 (로딩/에러), FR-UI-035 (접근성) |
 
 **구현 사항:**
-- [ ] 1. **접이식 사이드바 컴포넌트** (`src/components/layout/sidebar.tsx`): 대시보드 좌측 네비게이션. 섹션별 메뉴 그룹 (사이트, 채증, 증거, AI 검토, 분석, 설정). 접기/펴기 토글, 로고, 현재 사용자 정보 표시
-- [ ] 2. **대시보드 헤더 컴포넌트** (`src/components/layout/dashboard-header.tsx`): 페이지 타이틀, 브레드크럼, 사용자 드롭다운 (프로필, 설정, 로그아웃), 알림 벨 아이콘
-- [ ] 3. **대시보드 레이아웃** (`app/(dashboard)/layout.tsx`): 사이드바 + 헤더 + 메인 콘텐츠 영역 조합. 반응형 (모바일에서 사이드바 숨김, 햄버거 메뉴)
-- [ ] 4. **역할별 메뉴 가시성 구조**: 사이드바 메뉴 항목에 `requiredRole` 속성 부여. 현재 사용자 역할에 따라 표시/숨김 (더미 역할 사용)
-- [ ] 5. **인증 레이아웃** (`app/(auth)/layout.tsx`): 로그인/회원가입 페이지용 중앙 정렬 카드 레이아웃
-- [ ] 6. **초기 설정 위저드 레이아웃** (`app/setup/layout.tsx`): 단계별 위저드 UI 골격 (사이드바 없음, 스텝 인디케이터)
+- [x] 1. **접이식 사이드바 컴포넌트** (`src/components/layout/sidebar.tsx`): 대시보드 좌측 네비게이션. 섹션별 메뉴 그룹 (사이트, 채증, 증거, AI 검토, 분석, 설정). 접기/펴기 토글, 로고, 현재 사용자 정보 표시
+- [x] 2. **대시보드 헤더 컴포넌트** (`src/components/layout/dashboard-header.tsx`): 페이지 타이틀, 브레드크럼, 사용자 드롭다운 (프로필, 설정, 로그아웃), 알림 벨 아이콘
+- [x] 3. **대시보드 레이아웃** (`app/(dashboard)/layout.tsx`): 사이드바 + 헤더 + 메인 콘텐츠 영역 조합. 반응형 (모바일에서 사이드바 숨김, 햄버거 메뉴)
+- [x] 4. **역할별 메뉴 가시성 구조**: 사이드바 메뉴 항목에 `requiredRole` 속성 부여. 현재 사용자 역할에 따라 표시/숨김 (더미 역할 사용)
+- [x] 5. **인증 레이아웃** (`app/(auth)/layout.tsx`): 로그인/회원가입 페이지용 중앙 정렬 카드 레이아웃
+- [x] 6. **초기 설정 위저드 레이아웃** (`app/setup/layout.tsx`): 단계별 위저드 UI 골격 (사이드바 없음, 스텝 인디케이터)
 
 ---
 
@@ -129,11 +129,11 @@
 | **PRD 참조** | FR-UI-033, FR-UI-034, FR-UI-035 |
 
 **구현 사항:**
-- [ ] 1. **데이터 테이블 기반 컴포넌트** (`src/components/common/data-table.tsx`): TanStack Table v8 래퍼. 서버사이드 정렬/필터/페이지네이션 지원, 컬럼 정의 타입 안전성
-- [ ] 2. **상태 뱃지 컴포넌트** (`src/components/common/status-badge.tsx`): `SiteStatus`, `InvestigationStatus`, `VerificationStatus` 등 enum별 색상/아이콘 매핑
-- [ ] 3. **페이지 컨테이너 컴포넌트** (`src/components/common/page-container.tsx`): 페이지 타이틀, 설명, 액션 버튼 영역, 콘텐츠 영역을 표준화
-- [ ] 4. **로딩/에러/빈상태 컴포넌트**: `LoadingSkeleton`, `ErrorBoundary`, `EmptyState` 공통 컴포넌트
-- [ ] 5. **확인 다이얼로그 컴포넌트** (`src/components/common/confirm-dialog.tsx`): 삭제, 실행 등 위험 액션 확인용
+- [x] 1. **데이터 테이블 기반 컴포넌트** (`src/components/common/data-table.tsx`): TanStack Table v8 래퍼. 서버사이드 정렬/필터/페이지네이션 지원, 컬럼 정의 타입 안전성
+- [x] 2. **상태 뱃지 컴포넌트** (`src/components/common/status-badge.tsx`): `SiteStatus`, `InvestigationStatus`, `VerificationStatus` 등 enum별 색상/아이콘 매핑
+- [x] 3. **페이지 컨테이너 컴포넌트** (`src/components/common/page-container.tsx`): 페이지 타이틀, 설명, 액션 버튼 영역, 콘텐츠 영역을 표준화
+- [x] 4. **로딩/에러/빈상태 컴포넌트**: `LoadingSkeleton`, `ErrorBoundary`, `EmptyState` 공통 컴포넌트
+- [x] 5. **확인 다이얼로그 컴포넌트** (`src/components/common/confirm-dialog.tsx`): 삭제, 실행 등 위험 액션 확인용
 
 ---
 
@@ -146,9 +146,9 @@
 | **PRD 참조** | PRD 전체 기술 스택 |
 
 **구현 사항:**
-- [ ] 1. **`.env.example` 작성**: 모든 환경 변수 키와 설명 주석. DATABASE_URL, REDIS_URL, NEXTAUTH_SECRET, NEXTAUTH_URL, S3/MinIO 설정, Claude API Key, PVAPins/GrizzlySMS/SMS-Activate API Key, CapSolver/2Captcha API Key, Google Custom Search API Key, Slack Webhook URL, 프록시 설정
-- [ ] 2. **`src/lib/env.ts`**: Zod 기반 환경 변수 유효성 검증 스키마. 서버/클라이언트 환경 변수 분리
-- [ ] 3. **`src/lib/constants.ts`**: 시스템 상수 정의 (기본 타임아웃, 최대 재시도, 페이지네이션 기본값, 역할/권한 매핑 등)
+- [x] 1. **`.env.example` 작성**: 모든 환경 변수 키와 설명 주석. DATABASE_URL, REDIS_URL, NEXTAUTH_SECRET, NEXTAUTH_URL, S3/MinIO 설정, Claude API Key, PVAPins/GrizzlySMS/SMS-Activate API Key, CapSolver/2Captcha API Key, Google Custom Search API Key, Slack Webhook URL, 프록시 설정
+- [x] 2. **`src/lib/env.ts`**: Zod 기반 환경 변수 유효성 검증 스키마. 서버/클라이언트 환경 변수 분리
+- [x] 3. **`src/lib/constants.ts`**: 시스템 상수 정의 (기본 타임아웃, 최대 재시도, 페이지네이션 기본값, 역할/권한 매핑 등)
 
 ---
 
@@ -161,7 +161,7 @@
 | **PRD 참조** | FR-API-001~049 (07절) |
 
 **구현 사항:**
-- [ ] 1. **API 디렉토리 구조 생성**: `app/api/` 하위 49개 엔드포인트의 `route.ts` 파일 생성 (빈 핸들러 + TODO 주석)
+- [x] 1. **API 디렉토리 구조 생성**: `app/api/` 하위 49개 엔드포인트의 `route.ts` 파일 생성 (빈 핸들러 + TODO 주석)
   ```
   app/api/auth/login/route.ts          (FR-API-001)
   app/api/auth/logout/route.ts         (FR-API-002)
@@ -198,8 +198,8 @@
   app/api/sms/webhook/route.ts         (FR-SMS-008)
   app/api/sse/investigations/route.ts  (FR-API-047)
   ```
-- [ ] 2. **API 공통 유틸리티**: 응답 래퍼(`apiResponse`, `apiError`), 미들웨어 체인(`withAuth`, `withRole`, `withValidation`), Rate Limiter 골격
-- [ ] 3. **Zod 유효성 검증 스키마**: 각 엔드포인트의 요청 Body/Query 스키마 정의 (`src/lib/validations/`)
+- [x] 2. **API 공통 유틸리티**: 응답 래퍼(`apiResponse`, `apiError`), 미들웨어 체인(`withAuth`, `withRole`, `withValidation`), Rate Limiter 골격
+- [x] 3. **Zod 유효성 검증 스키마**: 각 엔드포인트의 요청 Body/Query 스키마 정의 (`src/lib/validations/`)
 
 ---
 
@@ -212,10 +212,10 @@
 | **PRD 참조** | 전체 |
 
 **구현 사항:**
-- [ ] 1. **더미 데이터 생성** (`src/lib/mock-data/`): 사이트 목록 30건, 채증 세션 50건, 증거 파일 100건, 감사 로그 200건, 사용자 10명 (역할별), 키워드 50개, 분류 결과 30건, 도메인 이력 등
-- [ ] 2. **Mock API 핸들러**: Phase 2 UI 개발 시 사용할 인메모리 데이터 기반 CRUD 모의 구현
-- [ ] 3. **더미 사용자 세션**: 4개 역할(`super_admin`, `admin`, `operator`, `investigator`, `legal`)별 모의 세션 데이터. 역할 전환 테스트용 UI 토글 포함
-- [ ] 4. **더미 통계 데이터**: 대시보드 차트용 시계열 데이터 (일별 탐지 건수, 채증 성공률 추이, 비용 추이 등)
+- [x] 1. **더미 데이터 생성** (`src/lib/mock-data/`): 사이트 목록 30건, 채증 세션 50건, 증거 파일 100건, 감사 로그 200건, 사용자 10명 (역할별), 키워드 50개, 분류 결과 30건, 도메인 이력 등
+- [x] 2. **Mock API 핸들러**: Phase 2 UI 개발 시 사용할 인메모리 데이터 기반 CRUD 모의 구현
+- [x] 3. **더미 사용자 세션**: 4개 역할(`super_admin`, `admin`, `operator`, `investigator`, `legal`)별 모의 세션 데이터. 역할 전환 테스트용 UI 토글 포함
+- [x] 4. **더미 통계 데이터**: 대시보드 차트용 시계열 데이터 (일별 탐지 건수, 채증 성공률 추이, 비용 추이 등)
 
 ---
 
@@ -228,10 +228,10 @@
 | **PRD 참조** | 슈퍼어드민 계정 구조, `/setup` 라우트 |
 
 **구현 사항:**
-- [ ] 1. **위저드 스텝 구조**: Step 1 (슈퍼어드민 계정 생성) -> Step 2 (DB 연결 설정) -> Step 3 (외부 서비스 API 키 입력) -> Step 4 (기본 시스템 설정) -> Step 5 (설정 확인 및 완료)
-- [ ] 2. **스텝 인디케이터 컴포넌트**: 진행 상태 시각화 (완료/현재/대기)
-- [ ] 3. **각 스텝 폼 UI 골격**: React Hook Form + Zod 스키마로 폼 골격만 구성 (실제 제출 로직은 Phase 3)
-- [ ] 4. **`/setup` 접근 제어 로직**: 시스템 초기 상태(DB에 사용자 0명)일 때만 접근 가능. 설정 완료 후 자동 리디렉션
+- [x] 1. **위저드 스텝 구조**: Step 1 (슈퍼어드민 계정 생성) -> Step 2 (DB 연결 설정) -> Step 3 (외부 서비스 API 키 입력) -> Step 4 (기본 시스템 설정) -> Step 5 (설정 확인 및 완료)
+- [x] 2. **스텝 인디케이터 컴포넌트**: 진행 상태 시각화 (완료/현재/대기)
+- [x] 3. **각 스텝 폼 UI 골격**: React Hook Form + Zod 스키마로 폼 골격만 구성 (실제 제출 로직은 Phase 3)
+- [x] 4. **`/setup` 접근 제어 로직**: 시스템 초기 상태(DB에 사용자 0명)일 때만 접근 가능. 설정 완료 후 자동 리디렉션
 
 ---
 
@@ -244,9 +244,9 @@
 | **PRD 참조** | FR-API-004 (RBAC), 슈퍼어드민 계정 구조 |
 
 **구현 사항:**
-- [ ] 1. **네비게이션 설정 파일** (`src/config/navigation.ts`): 사이드바 메뉴 항목 정의. 각 항목에 `href`, `icon`, `label`, `requiredRoles`, `children` 속성
-- [ ] 2. **권한 매핑 설정** (`src/config/permissions.ts`): 5개 역할(`super_admin`, `admin`, `operator`, `investigator`, `legal`) x 리소스별 CRUD 권한 매트릭스
-- [ ] 3. **메뉴 계층 구조**: 최상위 메뉴 (대시보드, 사이트, 채증, 증거, AI 검토, 분석, 보고서, 설정) + 하위 메뉴 정의
+- [x] 1. **네비게이션 설정 파일** (`src/config/navigation.ts`): 사이드바 메뉴 항목 정의. 각 항목에 `href`, `icon`, `label`, `requiredRoles`, `children` 속성
+- [x] 2. **권한 매핑 설정** (`src/config/permissions.ts`): 5개 역할(`super_admin`, `admin`, `operator`, `investigator`, `legal`) x 리소스별 CRUD 권한 매트릭스
+- [x] 3. **메뉴 계층 구조**: 최상위 메뉴 (대시보드, 사이트, 채증, 증거, AI 검토, 분석, 보고서, 설정) + 하위 메뉴 정의
 
 ---
 
@@ -295,11 +295,11 @@
 | **PRD 참조** | FR-UI-001 (KPI 카드), FR-UI-002 (활동 피드), FR-UI-003 (채증 모니터링 미니), FR-UI-004 (외부 서비스 상태) |
 
 **구현 사항:**
-- [ ] 1. **KPI 요약 카드 4종**: 총 등록 사이트, 오늘 채증 완료, 채증 성공률, 대기 중 작업 수. 전일 대비 증감 표시
-- [ ] 2. **최근 활동 피드**: 최근 채증 완료/실패, 신규 사이트 탐지, 수동 개입 요청 등 이벤트 타임라인 (더미 데이터)
-- [ ] 3. **채증 진행 현황 미니 위젯**: 현재 진행 중인 채증 수, 대기 큐 크기, 최근 1시간 성공/실패 카운트
-- [ ] 4. **외부 서비스 상태 카드**: SMS 잔여 크레딧, 프록시 상태, CAPTCHA 솔버 잔액 (더미)
-- [ ] 5. **반응형 그리드 레이아웃**: 데스크톱 4열, 태블릿 2열, 모바일 1열
+- [x] 1. **KPI 요약 카드 4종**: 총 등록 사이트, 오늘 채증 완료, 채증 성공률, 대기 중 작업 수. 전일 대비 증감 표시
+- [x] 2. **최근 활동 피드**: 최근 채증 완료/실패, 신규 사이트 탐지, 수동 개입 요청 등 이벤트 타임라인 (더미 데이터)
+- [x] 3. **채증 진행 현황 미니 위젯**: 현재 진행 중인 채증 수, 대기 큐 크기, 최근 1시간 성공/실패 카운트
+- [x] 4. **외부 서비스 상태 카드**: SMS 잔여 크레딧, 프록시 상태, CAPTCHA 솔버 잔액 (더미)
+- [x] 5. **반응형 그리드 레이아웃**: 데스크톱 4열, 태블릿 2열, 모바일 1열
 
 ---
 
@@ -312,11 +312,11 @@
 | **PRD 참조** | FR-UI-005 (사이트 목록), FR-UI-006 (사이트 상세), FR-UI-007 (수동 URL 등록), FR-UI-008 (사이트 수정), FR-UI-009 (벌크 임포트), FR-UI-010 (카테고리/태그) |
 
 **구현 사항:**
-- [ ] 1. **사이트 목록 페이지** (`/sites`): TanStack Table. 컬럼: URL, 도메인, 상태, 카테고리, 신뢰도, 최초 탐지일, 최근 체크일. 상태/카테고리 필터, 검색, 정렬, 페이지네이션
-- [ ] 2. **사이트 상세 페이지** (`/sites/[id]`): 사이트 기본 정보, WHOIS/DNS, 채증 이력 목록, 분류 결과, 도메인 이력 타임라인, 관련 클러스터, 메모/태그
-- [ ] 3. **수동 URL 등록 폼** (`/sites/new`): URL 입력, 카테고리 선택, 메모. React Hook Form + Zod 유효성 검증
-- [ ] 4. **벌크 URL 임포트** (`/sites/import`): CSV/TXT 파일 업로드 또는 텍스트 영역 직접 입력. 미리보기 테이블, 중복 검사 결과 표시
-- [ ] 5. **사이트 수정 다이얼로그**: 상태 변경, 카테고리 변경, 메모 수정, 태그 관리
+- [x] 1. **사이트 목록 페이지** (`/sites`): TanStack Table. 컬럼: URL, 도메인, 상태, 카테고리, 신뢰도, 최초 탐지일, 최근 체크일. 상태/카테고리 필터, 검색, 정렬, 페이지네이션
+- [x] 2. **사이트 상세 페이지** (`/sites/[id]`): 사이트 기본 정보, WHOIS/DNS, 채증 이력 목록, 분류 결과, 도메인 이력 타임라인, 관련 클러스터, 메모/태그
+- [x] 3. **수동 URL 등록 폼** (`/sites/new`): URL 입력, 카테고리 선택, 메모. React Hook Form + Zod 유효성 검증
+- [x] 4. **벌크 URL 임포트** (`/sites/import`): CSV/TXT 파일 업로드 또는 텍스트 영역 직접 입력. 미리보기 테이블, 중복 검사 결과 표시
+- [x] 5. **사이트 수정 다이얼로그**: 상태 변경, 카테고리 변경, 메모 수정, 태그 관리
 
 ---
 
@@ -329,10 +329,10 @@
 | **PRD 참조** | FR-UI-011 (채증 큐), FR-UI-012 (세션 상세), FR-UI-013 (갤러리), FR-UI-014 (결과 상세) |
 
 **구현 사항:**
-- [ ] 1. **채증 작업 큐 페이지** (`/investigations`): TanStack Table. 컬럼: 사이트 URL, 상태, 현재 단계, 시작 시각, 소요 시간, 재시도 횟수. 상태 필터 (대기/진행/완료/실패). 채증 실행/취소 버튼
-- [ ] 2. **채증 세션 상세 페이지** (`/investigations/[id]`): 3단계 파이프라인 시각화 (스텝 인디케이터), 각 단계별 상태/결과/스크린샷 미리보기, 에러 로그, 메타데이터 (프록시, 핑거프린트), 타임라인
-- [ ] 3. **채증 결과 갤러리** (`/investigations/gallery`): 스크린샷 썸네일 그리드, 사이트별/단계별/날짜별 필터, 라이트박스 뷰
-- [ ] 4. **채증 결과 상세** (`/investigations/[id]/results`): 단계별 탭 (1단계/2단계/3단계). 각 탭에 스크린샷 뷰어, HTML 소스 뷰, 네트워크 로그, WHOIS/DNS 정보, 메타데이터 JSON
+- [x] 1. **채증 작업 큐 페이지** (`/investigations`): TanStack Table. 컬럼: 사이트 URL, 상태, 현재 단계, 시작 시각, 소요 시간, 재시도 횟수. 상태 필터 (대기/진행/완료/실패). 채증 실행/취소 버튼
+- [x] 2. **채증 세션 상세 페이지** (`/investigations/[id]`): 3단계 파이프라인 시각화 (스텝 인디케이터), 각 단계별 상태/결과/스크린샷 미리보기, 에러 로그, 메타데이터 (프록시, 핑거프린트), 타임라인
+- [x] 3. **채증 결과 갤러리** (`/investigations/gallery`): 스크린샷 썸네일 그리드, 사이트별/단계별/날짜별 필터, 라이트박스 뷰
+- [x] 4. **채증 결과 상세** (`/investigations/[id]/results`): 단계별 탭 (1단계/2단계/3단계). 각 탭에 스크린샷 뷰어, HTML 소스 뷰, 네트워크 로그, WHOIS/DNS 정보, 메타데이터 JSON
 
 ---
 
@@ -345,10 +345,10 @@
 | **PRD 참조** | FR-UI-015 (증거 목록), FR-UI-016 (무결성 검증), FR-UI-017 (보고서), FR-UI-018 (감사 로그) |
 
 **구현 사항:**
-- [ ] 1. **증거 패키지 목록** (`/evidence`): TanStack Table. 컬럼: 사이트, 채증 세션, 파일 수, 총 크기, 해시 상태, 타임스탬프 상태, 생성일. 다운로드 버튼, 벌크 선택
-- [ ] 2. **증거 무결성 검증 페이지** (`/evidence/[id]/verify`): 파일별 해시 검증 결과 표 (파일명, 원본 해시, 재계산 해시, 일치 여부). OTS/RFC3161 타임스탬프 검증 상태. 전체 패키지 검증 실행 버튼
-- [ ] 3. **증거 보고서 페이지** (`/evidence/[id]/report`): 보고서 미리보기 (사이트 개요, 채증 과정, 증거 목록, 스크린샷). 보고서 생성 버튼, PDF 다운로드 버튼
-- [ ] 4. **증거 감사 로그 페이지** (`/evidence/[id]/audit`): 타임라인 형식. 수집 -> 해시 생성 -> 타임스탬프 -> 접근 이력. 각 이벤트에 시각, 행위자, 상세 정보
+- [x] 1. **증거 패키지 목록** (`/evidence`): TanStack Table. 컬럼: 사이트, 채증 세션, 파일 수, 총 크기, 해시 상태, 타임스탬프 상태, 생성일. 다운로드 버튼, 벌크 선택
+- [x] 2. **증거 무결성 검증 페이지** (`/evidence/[id]/verify`): 파일별 해시 검증 결과 표 (파일명, 원본 해시, 재계산 해시, 일치 여부). OTS/RFC3161 타임스탬프 검증 상태. 전체 패키지 검증 실행 버튼
+- [x] 3. **증거 보고서 페이지** (`/evidence/[id]/report`): 보고서 미리보기 (사이트 개요, 채증 과정, 증거 목록, 스크린샷). 보고서 생성 버튼, PDF 다운로드 버튼
+- [x] 4. **증거 감사 로그 페이지** (`/evidence/[id]/audit`): 타임라인 형식. 수집 -> 해시 생성 -> 타임스탬프 -> 접근 이력. 각 이벤트에 시각, 행위자, 상세 정보
 
 ---
 
@@ -361,10 +361,10 @@
 | **PRD 참조** | FR-UI-019 (CAPTCHA 큐), FR-UI-020 (원격 브라우저), FR-UI-021 (알림 설정), FR-EC-031~033 |
 
 **구현 사항:**
-- [ ] 1. **CAPTCHA/OTP 대기 큐** (`/investigations/captcha-queue`): 대기 항목 목록 (유형, 사이트 URL, 대기 시간, 스크린샷 미리보기). 우선순위 정렬, 건너뛰기/타임아웃 연장 버튼
-- [ ] 2. **원격 브라우저 뷰어 영역**: CDP WebSocket 기반 원격 브라우저 스트리밍 UI 골격 (Phase 3에서 실제 연동). 빈 캔버스 + "연결 대기 중" 상태 표시
-- [ ] 3. **수동 OTP 입력 폼**: OTP 코드 직접 입력 필드, "인증 완료" 버튼
-- [ ] 4. **알림 설정 페이지 영역**: 웹 푸시 알림 구독 토글, Slack 알림 설정 (웹훅 URL 입력)
+- [x] 1. **CAPTCHA/OTP 대기 큐** (`/investigations/captcha-queue`): 대기 항목 목록 (유형, 사이트 URL, 대기 시간, 스크린샷 미리보기). 우선순위 정렬, 건너뛰기/타임아웃 연장 버튼
+- [x] 2. **원격 브라우저 뷰어 영역**: CDP WebSocket 기반 원격 브라우저 스트리밍 UI 골격 (Phase 3에서 실제 연동). 빈 캔버스 + "연결 대기 중" 상태 표시
+- [x] 3. **수동 OTP 입력 폼**: OTP 코드 직접 입력 필드, "인증 완료" 버튼
+- [x] 4. **알림 설정 페이지 영역**: 웹 푸시 알림 구독 토글, Slack 알림 설정 (웹훅 URL 입력)
 
 ---
 
@@ -377,8 +377,8 @@
 | **PRD 참조** | FR-UI-022 (검토 큐), FR-UI-023 (상세 검토), FR-DE-013 |
 
 **구현 사항:**
-- [ ] 1. **AI 분류 검토 큐** (`/review`): TanStack Table. 컬럼: 사이트 URL, AI 분류 결과, 신뢰도, 모델, 생성일. 검토 상태 필터 (대기/승인/거부). 저신뢰(< 0.7) 항목 하이라이트
-- [ ] 2. **분류 상세 검토** (`/review/[id]`): 사이트 스크린샷, AI 분류 결과 (카테고리, 신뢰도, 근거 목록), 사이트 HTML 미리보기. 승인/수정/거부 액션 버튼, 카테고리 재분류 드롭다운
+- [x] 1. **AI 분류 검토 큐** (`/review`): TanStack Table. 컬럼: 사이트 URL, AI 분류 결과, 신뢰도, 모델, 생성일. 검토 상태 필터 (대기/승인/거부). 저신뢰(< 0.7) 항목 하이라이트
+- [x] 2. **분류 상세 검토** (`/review/[id]`): 사이트 스크린샷, AI 분류 결과 (카테고리, 신뢰도, 근거 목록), 사이트 HTML 미리보기. 승인/수정/거부 액션 버튼, 카테고리 재분류 드롭다운
 
 ---
 
@@ -391,10 +391,10 @@
 | **PRD 참조** | FR-UI-024 (추이 차트), FR-UI-025 (분포 차트), FR-UI-026 (네트워크 시각화) |
 
 **구현 사항:**
-- [ ] 1. **통계 대시보드** (`/analytics`): 기간 선택기 (일/주/월/분기), KPI 요약 카드 (탐지 건수, 채증 성공률, SMS 비용, AI 분류 건수)
-- [ ] 2. **추이 차트** (Recharts): 일별/주별 탐지 건수 추이, 채증 성공률 추이, 비용 추이 라인 차트 (더미 시계열 데이터)
-- [ ] 3. **분포 차트** (Recharts): 카테고리별 사이트 분포 파이 차트, 상태별 분포 바 차트, 탐지 소스별 분포
-- [ ] 4. **네트워크 시각화 골격**: D3.js 또는 Cytoscape.js 기반 도메인 관계 그래프 (더미 노드/엣지). 줌/팬, 노드 클릭 시 사이트 상세 링크
+- [x] 1. **통계 대시보드** (`/analytics`): 기간 선택기 (일/주/월/분기), KPI 요약 카드 (탐지 건수, 채증 성공률, SMS 비용, AI 분류 건수)
+- [x] 2. **추이 차트** (Recharts): 일별/주별 탐지 건수 추이, 채증 성공률 추이, 비용 추이 라인 차트 (더미 시계열 데이터)
+- [x] 3. **분포 차트** (Recharts): 카테고리별 사이트 분포 파이 차트, 상태별 분포 바 차트, 탐지 소스별 분포
+- [x] 4. **네트워크 시각화 골격**: D3.js 또는 Cytoscape.js 기반 도메인 관계 그래프 (더미 노드/엣지). 줌/팬, 노드 클릭 시 사이트 상세 링크
 
 ---
 
@@ -407,9 +407,9 @@
 | **PRD 참조** | FR-UI-027 (보고서 목록), FR-UI-028 (내보내기) |
 
 **구현 사항:**
-- [ ] 1. **정기 보고서 목록** (`/reports`): 보고서 제목, 기간, 생성일, 생성자, 형식 (PDF/Excel). 보고서 미리보기, 다운로드 버튼
-- [ ] 2. **보고서 생성 폼**: 기간 선택, 보고서 유형 선택, 포함 항목 체크리스트, 템플릿 선택 드롭다운
-- [ ] 3. **내보내기 기능 UI**: PDF/Excel/CSV 형식 선택 다이얼로그, 내보내기 진행 상태 표시
+- [x] 1. **정기 보고서 목록** (`/reports`): 보고서 제목, 기간, 생성일, 생성자, 형식 (PDF/Excel). 보고서 미리보기, 다운로드 버튼
+- [x] 2. **보고서 생성 폼**: 기간 선택, 보고서 유형 선택, 포함 항목 체크리스트, 템플릿 선택 드롭다운
+- [x] 3. **내보내기 기능 UI**: PDF/Excel/CSV 형식 선택 다이얼로그, 내보내기 진행 상태 표시
 
 ---
 
@@ -422,10 +422,10 @@
 | **PRD 참조** | FR-UI-029 (사용자 관리), FR-UI-030 (시스템 설정), FR-UI-031 (키워드 관리), FR-UI-032 (감사 로그) |
 
 **구현 사항:**
-- [ ] 1. **시스템 설정** (`/settings`): 탭 기반 설정 그룹 (채증 파이프라인, SMS 서비스, 프록시, CAPTCHA, 비용 한도, 알림). 각 탭에 키-값 설정 폼
-- [ ] 2. **사용자/역할 관리** (`/settings/users`): 사용자 목록 테이블 (이름, 이메일, 역할, 상태, 최근 로그인). 사용자 생성/편집 다이얼로그, 역할 변경 드롭다운, 비활성화 토글
-- [ ] 3. **키워드 관리** (`/settings/keywords`): 키워드 목록 테이블 (키워드, 카테고리, 탐지 건수, 상태). 키워드 추가/편집/삭제. "AI 유사 키워드 생성" 버튼 (UI만, 기능은 Phase 3)
-- [ ] 4. **감사 로그 뷰어** (`/settings/audit-log`): TanStack Table. 컬럼: 시각, 행위자, 액션, 대상, IP. 날짜 범위/액션 유형/행위자 필터
+- [x] 1. **시스템 설정** (`/settings`): 탭 기반 설정 그룹 (채증 파이프라인, SMS 서비스, 프록시, CAPTCHA, 비용 한도, 알림). 각 탭에 키-값 설정 폼
+- [x] 2. **사용자/역할 관리** (`/settings/users`): 사용자 목록 테이블 (이름, 이메일, 역할, 상태, 최근 로그인). 사용자 생성/편집 다이얼로그, 역할 변경 드롭다운, 비활성화 토글
+- [x] 3. **키워드 관리** (`/settings/keywords`): 키워드 목록 테이블 (키워드, 카테고리, 탐지 건수, 상태). 키워드 추가/편집/삭제. "AI 유사 키워드 생성" 버튼 (UI만, 기능은 Phase 3)
+- [x] 4. **감사 로그 뷰어** (`/settings/audit-log`): TanStack Table. 컬럼: 시각, 행위자, 액션, 대상, IP. 날짜 범위/액션 유형/행위자 필터
 
 ---
 
@@ -438,9 +438,9 @@
 | **PRD 참조** | FR-API-001 (로그인), `/login`, `/signup` 라우트 |
 
 **구현 사항:**
-- [ ] 1. **로그인 페이지 리팩토링**: 기존 `login-form` 컴포넌트를 React Hook Form + Zod로 전환. 이메일/비밀번호 유효성 검증, 에러 메시지, 로딩 상태
-- [ ] 2. **회원가입 페이지 리팩토링**: 이름, 이메일, 비밀번호, 비밀번호 확인 폼. 비밀번호 강도 표시
-- [ ] 3. **인증 레이아웃 통합**: `(auth)` 그룹 레이아웃에 로고, 제품 소개 텍스트, 카드 래퍼 적용
+- [x] 1. **로그인 페이지 리팩토링**: 기존 `login-form` 컴포넌트를 React Hook Form + Zod로 전환. 이메일/비밀번호 유효성 검증, 에러 메시지, 로딩 상태
+- [x] 2. **회원가입 페이지 리팩토링**: 이름, 이메일, 비밀번호, 비밀번호 확인 폼. 비밀번호 강도 표시
+- [x] 3. **인증 레이아웃 통합**: `(auth)` 그룹 레이아웃에 로고, 제품 소개 텍스트, 카드 래퍼 적용
 
 ---
 
@@ -455,12 +455,12 @@
 
 **구현 사항:**
 
-- [ ] 1. **히어로 섹션**: 서비스명, 핵심 가치 제안 헤드라인, 서브 헤드라인, CTA 버튼(로그인/데모 요청), 대시보드 목업 이미지 또는 그라디언트 배경. 인증 상태에 따라 `/` 라우트에서 랜딩 페이지(비인증) 또는 대시보드(인증)로 분기
-- [ ] 2. **주요 기능 소개 카드(4~6개)**: 자동 탐지, 3단계 채증, AI 분류, 증거 무결성, SMS 자동 인증, 법원 제출용 보고서. 반응형 그리드(데스크톱 3열, 태블릿 2열, 모바일 1열), hover 애니메이션
-- [ ] 3. **시스템 구성도**: 전체 파이프라인(탐지 -> 접속 -> 채증 -> 증거 패키지)을 SVG 또는 CSS 기반 다이어그램으로 시각화
-- [ ] 4. **대상 기관 섹션**: 사행산업통합감독위원회, 경찰청 사이버수사국, 한국마사회 불법경마 감시팀, 국민체육진흥공단. 아이콘 + 활용 시나리오 설명
-- [ ] 5. **푸터**: 연락처, 법적 고지("본 시스템은 인가된 수사 기관 및 감독 기관만 사용할 수 있습니다"), 저작권, 개인정보처리방침/이용약관 링크
-- [ ] 6. **반응형 + 다크 모드**: 모바일/태블릿/데스크톱 대응, 다크 모드에서 배경/텍스트/카드 색상 전환
+- [x] 1. **히어로 섹션**: 서비스명, 핵심 가치 제안 헤드라인, 서브 헤드라인, CTA 버튼(로그인/데모 요청), 대시보드 목업 이미지 또는 그라디언트 배경. 인증 상태에 따라 `/` 라우트에서 랜딩 페이지(비인증) 또는 대시보드(인증)로 분기
+- [x] 2. **주요 기능 소개 카드(4~6개)**: 자동 탐지, 3단계 채증, AI 분류, 증거 무결성, SMS 자동 인증, 법원 제출용 보고서. 반응형 그리드(데스크톱 3열, 태블릿 2열, 모바일 1열), hover 애니메이션
+- [x] 3. **시스템 구성도**: 전체 파이프라인(탐지 -> 접속 -> 채증 -> 증거 패키지)을 SVG 또는 CSS 기반 다이어그램으로 시각화
+- [x] 4. **대상 기관 섹션**: 사행산업통합감독위원회, 경찰청 사이버수사국, 한국마사회 불법경마 감시팀, 국민체육진흥공단. 아이콘 + 활용 시나리오 설명
+- [x] 5. **푸터**: 연락처, 법적 고지("본 시스템은 인가된 수사 기관 및 감독 기관만 사용할 수 있습니다"), 저작권, 개인정보처리방침/이용약관 링크
+- [x] 6. **반응형 + 다크 모드**: 모바일/태블릿/데스크톱 대응, 다크 모드에서 배경/텍스트/카드 색상 전환
 
 ---
 
@@ -473,10 +473,10 @@
 | **PRD 참조** | FR-UI-033 (반응형), FR-UI-035 (접근성) |
 
 **구현 사항:**
-- [ ] 1. **반응형 브레이크포인트 검증**: 모든 페이지에 대해 모바일(375px), 태블릿(768px), 데스크톱(1280px+) 3개 브레이크포인트 검증
-- [ ] 2. **모바일 사이드바**: 햄버거 메뉴 토글, 오버레이 사이드바, 외부 클릭 닫기
-- [ ] 3. **다크 모드 지원**: TailwindCSS v4 다크 모드 설정, 시스템 설정 자동 감지 + 수동 토글
-- [ ] 4. **접근성 기본**: 키보드 네비게이션, aria-label, 포커스 표시, 색상 대비
+- [x] 1. **반응형 브레이크포인트 검증**: 모든 페이지에 대해 모바일(375px), 태블릿(768px), 데스크톱(1280px+) 3개 브레이크포인트 검증
+- [x] 2. **모바일 사이드바**: 햄버거 메뉴 토글, 오버레이 사이드바, 외부 클릭 닫기
+- [x] 3. **다크 모드 지원**: TailwindCSS v4 다크 모드 설정, 시스템 설정 자동 감지 + 수동 토글
+- [x] 4. **접근성 기본**: 키보드 네비게이션, aria-label, 포커스 표시, 색상 대비
 
 ---
 
@@ -489,9 +489,9 @@
 | **PRD 참조** | FR-SMS-018 (비용 대시보드), FR-SMS-019 (한도 설정), FR-SMS-020 (성공률), FR-SMS-021 (비용 알림) |
 
 **구현 사항:**
-- [ ] 1. **SMS 사용량/비용 대시보드 위젯**: 서비스별(PVAPins/GrizzlySMS/SMS-Activate) 사용량 차트, 누적 비용, 잔여 크레딧 (더미)
-- [ ] 2. **한도 설정 UI**: 일일/월간 사용 한도, 비용 한도, 임계치 알림 설정 폼
-- [ ] 3. **서비스별 성공률 차트**: 번호 발급 성공률, OTP 수신 성공률, 전체 인증 성공률 바 차트
+- [x] 1. **SMS 사용량/비용 대시보드 위젯**: 서비스별(PVAPins/GrizzlySMS/SMS-Activate) 사용량 차트, 누적 비용, 잔여 크레딧 (더미)
+- [x] 2. **한도 설정 UI**: 일일/월간 사용 한도, 비용 한도, 임계치 알림 설정 폼
+- [x] 3. **서비스별 성공률 차트**: 번호 발급 성공률, OTP 수신 성공률, 전체 인증 성공률 바 차트
 
 ---
 
@@ -504,11 +504,11 @@
 | **PRD 참조** | 슈퍼어드민 계정 구조 |
 
 **구현 사항:**
-- [ ] 1. **Step 1 UI**: 슈퍼어드민 이메일, 비밀번호, 이름 입력 폼. 비밀번호 강도 검증
-- [ ] 2. **Step 2 UI**: PostgreSQL 연결 문자열 입력, Redis 연결 문자열 입력, 연결 테스트 버튼 (UI만)
-- [ ] 3. **Step 3 UI**: Claude API Key, SMS 서비스 API Key, CAPTCHA 서비스 API Key, Google Search API Key 입력 폼. 각 키 검증 버튼 (UI만)
-- [ ] 4. **Step 4 UI**: 동시 브라우저 수, 기본 프록시 설정, 비용 한도, 알림 설정 폼
-- [ ] 5. **Step 5 UI**: 전체 설정 요약 카드, "설정 완료" 버튼, 성공 화면
+- [x] 1. **Step 1 UI**: 슈퍼어드민 이메일, 비밀번호, 이름 입력 폼. 비밀번호 강도 검증
+- [x] 2. **Step 2 UI**: PostgreSQL 연결 문자열 입력, Redis 연결 문자열 입력, 연결 테스트 버튼 (UI만)
+- [x] 3. **Step 3 UI**: Claude API Key, SMS 서비스 API Key, CAPTCHA 서비스 API Key, Google Search API Key 입력 폼. 각 키 검증 버튼 (UI만)
+- [x] 4. **Step 4 UI**: 동시 브라우저 수, 기본 프록시 설정, 비용 한도, 알림 설정 폼
+- [x] 5. **Step 5 UI**: 전체 설정 요약 카드, "설정 완료" 버튼, 성공 화면
 
 ---
 
@@ -1256,6 +1256,63 @@ Phase 4 (고급 기능)
   Task 046 → Task 055 (Computer Use + 최적화)
   Task 056 (최종 테스트/배포)
 ```
+
+---
+
+## 개선 아이디어 Task (v1.3 추가)
+
+> 추가일: 2026-03-18
+> 시나리오 분석을 통해 도출된 23개 개선 아이디어의 Task 매핑
+
+### Phase 2 즉시 도입 (Quick Win)
+
+| Task | 이름 | 예상 소요 | 개선 ID | 핵심 효과 |
+|------|------|----------|---------|----------|
+| 057 | 법적 승인 프로세스 시스템화 | 2일 | GAP-2 | 법적 방어력 확보 |
+| 058 | 증거 자동 검증 파이프라인 | 2일 | WF-2 | 법무 업무 60% 절감 |
+| 059 | Claude 배치 API + 프롬프트 캐싱 | 1일 | TECH-2 | LLM 비용 67% 절감 |
+| 060 | 원클릭 채증 (빠른 URL 입력 바) | 1일 | UX-1 | 긴급 채증 2분→10초 |
+
+### Phase 2-3 핵심 도입 (High Impact)
+
+| Task | 이름 | 예상 소요 | 개선 ID | 핵심 효과 |
+|------|------|----------|---------|----------|
+| 061 | SMS 비용 절감 — 계정 재활용 + 사이트 분류 | 3일 | TECH-1 | 월 $357~1,428→$100~400 |
+| 062 | 브라우저 웜 풀 + 세션 프로파일 | 3일 | TECH-3 | 채증 시작 30초→5초 |
+| 063 | SMS 차단 고도화 — 번인 + 시간대 분산 | 2일 | RISK-1 | 성공률 70%→80% |
+| 064 | 법적 리스크 관리 — 2인 승인 + 판례 모니터링 | 2일 | RISK-3 | 증거 기각 50% 감소 |
+| 065 | Kanban 채증 모니터링 | 3일 | UX-2 | 상황 인지 50% 향상 |
+
+### Phase 3 전략 도입
+
+| Task | 이름 | 예상 소요 | 개선 ID | 핵심 효과 |
+|------|------|----------|---------|----------|
+| 066 | 다기관 협업 케이스 관리 | 4일 | GAP-1 | 수사~제출 30-40% 단축 |
+| 067 | AI 동적 채증 우선순위 | 2일 | WF-1 | 유효 증거 20-30% 향상 |
+| 068 | 채증 실패 분석 대시보드 | 2일 | GAP-3 | 성공률 70%→80% 가속 |
+| 069 | 시스템 헬스체크 (Prometheus+Grafana) | 3일 | GAP-4 | 다운타임 50% 감소 |
+| 070 | ROI 자동 산출 대시보드 | 2일 | BIZ-3 | 예산 보고 자동화 |
+| 071 | 안티봇 벤치마크 자동화 | 2일 | RISK-4 | 접속률 85%→92% |
+| 072 | 모바일/Slack 수동 개입 최적화 | 2일 | UX-4 | 응답 5분→2분 |
+
+### Phase 3-4 전략 도입
+
+| Task | 이름 | 예상 소요 | 개선 ID | 핵심 효과 |
+|------|------|----------|---------|----------|
+| 073 | 도메인 호핑 선제 대응 자동화 | 4일 | WF-3 | 추적률 60%→80% |
+| 074 | 도메인 폐쇄 시점 예측 모델 | 3일 | RISK-2 | 추적률 60%→75% |
+| 075 | 안티봇 4단계 에스컬레이션 | 3일 | RISK-4 | 접속률 85%→92% |
+
+### Phase 4 고도화 도입
+
+| Task | 이름 | 예상 소요 | 개선 ID | 핵심 효과 |
+|------|------|----------|---------|----------|
+| 076 | 증거 보존 기간 관리 + 자동 파기 | 2일 | GAP-5 | 스토리지 15-20% 절감 |
+| 077 | 증거 저장소 Hot/Warm/Cold 계층화 | 3일 | TECH-4 | 스토리지 40-50% 절감 |
+| 078 | 기관별 맞춤 대시보드 프리셋 | 3일 | BIZ-1 | 도입 기관 확대 |
+| 079 | 불법 도박 인텔리전스 리포트 | 3일 | BIZ-2 | 정책 가치 극대화 |
+| 080 | 증거 시간별 비교 뷰 (법무용) | 3일 | UX-3 | 보고서 2시간→30분 |
+| 081 | eSIM API 연동 | 2일 | RISK-1 | SMS 비용 추가 절감 |
 
 ---
 

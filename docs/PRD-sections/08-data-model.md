@@ -1309,6 +1309,160 @@ model PopupPattern {
 
 ---
 
+## 개선 데이터 모델 (v1.3 추가)
+
+> 추가일: 2026-03-18
+> 시나리오 분석을 통해 도출된 신규 테이블 정의
+
+### K. 사건 관리 (GAP-1, Phase 3)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-DM-021** | cases 엔티티 정의 | 수사 사건 단위로 관련 사이트/채증/증거를 묶어 관리하는 케이스 테이블을 정의한다. 다기관 협업 워크플로우(수사관 제보 → 운영자 채증 → 법무 검증 → 관리자 승인)의 상태를 추적한다. | P2 | Phase 3 | 1. `case_number`는 기관별 사건 번호 형식을 지원한다 (예: "2026-사이버-001") 2. `status`는 `OPEN`, `INVESTIGATING`, `EVIDENCE_READY`, `SUBMITTED`, `CLOSED` 5가지 상태를 지원한다 3. `assigned_investigator_id`와 `assigned_prosecutor_id`는 users 테이블의 FK이다 4. 사건에 연결된 사이트/채증/증거를 case_id로 조회할 수 있다 5. 상태 변경 시 audit_logs에 자동 기록된다 | Site, Investigation, EvidenceFile 테이블에 `case_id` FK 추가. 상태 전이: OPEN → INVESTIGATING → EVIDENCE_READY → SUBMITTED → CLOSED |
+
+```prisma
+model Case {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseNumber             String   @unique @map("case_number")
+  title                  String
+  description            String?
+  status                 CaseStatus @default(OPEN)
+  assignedInvestigatorId String?  @map("assigned_investigator_id") @db.Uuid
+  assignedProsecutorId   String?  @map("assigned_prosecutor_id") @db.Uuid
+  openedAt               DateTime @default(now()) @map("opened_at")
+  closedAt               DateTime? @map("closed_at")
+
+  assignedInvestigator User? @relation("InvestigatorCases", fields: [assignedInvestigatorId], references: [id])
+  assignedProsecutor   User? @relation("ProsecutorCases", fields: [assignedProsecutorId], references: [id])
+  sites                Site[]
+  investigations       Investigation[]
+  evidenceFiles        EvidenceFile[]
+  legalAuthorizations  LegalAuthorization[]
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  @@index([status])
+  @@index([caseNumber])
+  @@index([assignedInvestigatorId])
+  @@map("cases")
+}
+
+enum CaseStatus {
+  OPEN
+  INVESTIGATING
+  EVIDENCE_READY
+  SUBMITTED
+  CLOSED
+}
+```
+
+---
+
+### L. 법적 승인 관리 (GAP-2, Phase 2)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-DM-022** | legal_authorizations 엔티티 정의 | 채증 행위의 법적 근거(수사 의뢰서, 행정조사 권한 등)를 관리하는 테이블을 정의한다. 채증 실행 전 법적 근거 존재 여부를 검증하고, 증거 패키지에 자동 연결한다. | P1 | Phase 2 | 1. `authorization_type`은 `INVESTIGATION_REQUEST`(수사 의뢰서), `ADMINISTRATIVE_ORDER`(행정조사 권한), `COOPERATION_AGREEMENT`(협력 계약) 3가지를 지원한다 2. `scope_description`에 승인 범위(대상 사이트/기간)를 기록한다 3. `document_path`에 승인 문서(PDF)의 S3 경로를 저장한다 4. `expires_at` 만료일 기준 30일/7일/1일 전 알림이 발송된다 5. 만료된 승인과 연결된 채증 시도 시 경고가 표시된다 | S3/MinIO 문서 저장, Celery Beat 만료 체크 |
+
+```prisma
+model LegalAuthorization {
+  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  caseId              String?  @map("case_id") @db.Uuid
+  authorizationType   AuthorizationType @map("authorization_type")
+  issuingAuthority    String   @map("issuing_authority")
+  scopeDescription    String   @map("scope_description")
+  documentPath        String?  @map("document_path")
+  issuedAt            DateTime @map("issued_at")
+  expiresAt           DateTime @map("expires_at")
+  approvedById        String   @map("approved_by_id") @db.Uuid
+
+  case      Case? @relation(fields: [caseId], references: [id])
+  approvedBy User  @relation("ApprovedAuthorizations", fields: [approvedById], references: [id])
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@index([caseId])
+  @@index([expiresAt])
+  @@index([authorizationType])
+  @@map("legal_authorizations")
+}
+
+enum AuthorizationType {
+  INVESTIGATION_REQUEST
+  ADMINISTRATIVE_ORDER
+  COOPERATION_AGREEMENT
+}
+```
+
+---
+
+### M. 증거 보존 정책 (GAP-5, Phase 4)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-DM-023** | evidence_retention_policies 엔티티 정의 | 증거 데이터의 보존 기간 관리 정책을 정의하는 테이블이다. 정책별 보존 일수, 자동 연장 조건, 파기 시 승인 요구 여부를 관리한다. 개인정보보호법 준수와 스토리지 비용 관리를 위한 Hot/Warm/Cold 계층 이동 정책도 포함한다. | P2 | Phase 4 | 1. `retention_days`로 기본 보존 기간(일)을 설정한다 2. `auto_extend_on_active_case`가 true이면 활성 사건에 연결된 증거는 자동 연장된다 3. `requires_approval_for_deletion`이 true이면 파기 시 법무 승인이 필수이다 4. 보존 만료 30일/7일 전 담당자에게 알림이 발송된다 5. Hot(30일) → Warm(180일) → Cold(180일+) 계층 이동이 자동 수행된다 | Celery Beat 만료 체크, MinIO 스토리지 계층 관리 |
+
+```prisma
+model EvidenceRetentionPolicy {
+  id                           String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  policyName                   String  @unique @map("policy_name")
+  description                  String?
+  retentionDays                Int     @map("retention_days") @default(365)
+  autoExtendOnActiveCase       Boolean @map("auto_extend_on_active_case") @default(true)
+  requiresApprovalForDeletion  Boolean @map("requires_approval_for_deletion") @default(true)
+  storageHotDays               Int     @map("storage_hot_days") @default(30)
+  storageWarmDays              Int     @map("storage_warm_days") @default(180)
+  isActive                     Boolean @map("is_active") @default(true)
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@map("evidence_retention_policies")
+}
+```
+
+---
+
+### N. 계정 재활용 (TECH-1, Phase 2)
+
+| ID | 제목 | 설명 | 우선순위 | Phase | 수용 기준 | 기술 구현 참고 |
+|----|------|------|---------|-------|----------|---------------|
+| **FR-DM-024** | site_accounts 엔티티 정의 | 가입에 성공한 도박 사이트 계정을 암호화 저장하여 재방문 시 재활용하는 테이블이다. SMS 비용 절감(60-70%)의 핵심 메커니즘이다. | P1 | Phase 2 | 1. `username`과 `password_encrypted`는 AES-256으로 암호화 저장된다 2. 동일 사이트 재채증 시 기존 계정 로그인을 우선 시도한다 3. `status`는 `ACTIVE`, `BLOCKED`, `EXPIRED` 3가지 상태를 지원한다 4. 계정 차단 감지 시 자동으로 `BLOCKED`로 전환된다 5. 계정 수명(가입~차단) 통계가 집계된다 | AES-256 암호화, Playwright 로그인 자동화 |
+
+```prisma
+model SiteAccount {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  siteId             String   @map("site_id") @db.Uuid
+  username           String
+  passwordEncrypted  String   @map("password_encrypted")
+  status             SiteAccountStatus @default(ACTIVE)
+  lastLoginAt        DateTime? @map("last_login_at")
+  blockedAt          DateTime? @map("blocked_at")
+  loginCount         Int      @default(0) @map("login_count")
+
+  site Site @relation(fields: [siteId], references: [id], onDelete: CASCADE)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([siteId, username])
+  @@index([siteId])
+  @@index([status])
+  @@map("site_accounts")
+}
+
+enum SiteAccountStatus {
+  ACTIVE
+  BLOCKED
+  EXPIRED
+}
+```
+
+---
+
 ## 요구사항 요약 매트릭스
 
 | ID | 제목 | 우선순위 | Phase | 카테고리 |

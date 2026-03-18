@@ -1,6 +1,7 @@
 import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
+  output: 'standalone',
   poweredByHeader: false,
   compress: true,
   images: {
@@ -47,7 +48,7 @@ const nextConfig: NextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: blob: https:",
               "font-src 'self' data:",
-              "connect-src 'self' https:",
+              "connect-src 'self' http://localhost:8000 https:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
