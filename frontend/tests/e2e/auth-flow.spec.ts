@@ -81,4 +81,28 @@ test.describe('인증 플로우 E2E 검증', () => {
       timeout: 20000,
     })
   })
+
+  // ──────────────────────────────────────
+  // 로그인 → 대시보드 이동 검증
+  // ──────────────────────────────────────
+
+  test('admin@gambleguard.kr로 로그인하면 대시보드(/)로 이동한다', async ({
+    page,
+  }) => {
+    // localStorage 초기화
+    await page.goto('/login', { waitUntil: 'networkidle' })
+    await page.evaluate(() => localStorage.clear())
+    await page.goto('/login', { waitUntil: 'networkidle' })
+
+    // 로그인 폼 입력
+    await page.fill('input[type="email"]', 'admin@gambleguard.kr')
+    await page.fill('input[type="password"]', 'admin1234')
+    await page.click('button[type="submit"]')
+
+    // 대시보드로 이동 확인
+    await page.waitForURL('**/', { timeout: 20000 })
+    // /login이 아닌 다른 페이지로 이동했는지 확인
+    expect(page.url()).not.toContain('/login')
+    expect(page.url()).not.toContain('/setup')
+  })
 })
