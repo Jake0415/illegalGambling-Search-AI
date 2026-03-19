@@ -140,9 +140,10 @@ services:
     container_name: gambleguard-web
     environment:
       NEXT_PUBLIC_API_URL: https://localhost/api
+      BACKEND_INTERNAL_URL: http://backend:8000
       WATCHPACK_POLLING: "true"
-    expose:
-      - "3000"
+    ports:
+      - "3000:3000"
     volumes:
       - ./frontend:/app
       - frontend_nodemodules:/app/node_modules

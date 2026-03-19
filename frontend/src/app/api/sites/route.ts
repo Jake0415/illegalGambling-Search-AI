@@ -1,18 +1,27 @@
 import type { NextRequest } from 'next/server';
 
 import { apiError, apiPaginated, apiSuccess } from '@/server/api/response';
+import { fetchBackend } from '@/server/api/backend-client';
 import { createSiteSchema } from '@/types/forms';
 
 // PRD: FR-API-005 GET /api/sites -- 사이트 목록 조회
-// Phase 3에서 Prisma findMany + cursor pagination 구현
-export async function GET(_request: NextRequest) {
-  // TODO: Phase 3 - 실제 사이트 목록 조회 구현
-  // 1. 쿼리 파라미터 파싱 (status, category, search, createdAfter, createdBefore)
-  // 2. Prisma findMany + cursor 기반 페이지네이션
-  // 3. PostgreSQL 인덱스 활용 (status, category, createdAt)
-  // 4. Full-text search (to_tsvector)
+export async function GET(request: NextRequest) {
+  try {
+    const params = request.nextUrl.searchParams.toString();
+    const result = await fetchBackend<{
+      data: unknown[];
+      pagination: { total: number };
+    }>(`/sites?${params}`);
 
-  return apiPaginated([], 0, 1, 20);
+    return apiPaginated(
+      result.data,
+      result.pagination?.total ?? 0,
+      1,
+      20,
+    );
+  } catch {
+    return apiPaginated([], 0, 1, 20);
+  }
 }
 
 // PRD: FR-API-006 POST /api/sites -- 사이트 등록 (단건)

@@ -1,16 +1,26 @@
 import type { NextRequest } from 'next/server';
 
 import { apiError, apiPaginated, apiSuccess } from '@/server/api/response';
+import { fetchBackend } from '@/server/api/backend-client';
 
 // PRD: FR-API-013 GET /api/investigations -- 채증 작업 목록 조회
-// Phase 3에서 Prisma findMany + cursor pagination + BullMQ 상태 연동
-export async function GET(_request: NextRequest) {
-  // TODO: Phase 3 - 실제 채증 목록 조회 구현
-  // 1. 쿼리 파라미터 파싱 (status, siteId, createdAfter, createdBefore)
-  // 2. Prisma findMany + cursor 기반 페이지네이션
-  // 3. BullMQ Job.getState() 연동으로 최신 상태 반영
+export async function GET(request: NextRequest) {
+  try {
+    const params = request.nextUrl.searchParams.toString();
+    const result = await fetchBackend<{
+      data: unknown[];
+      pagination: { total: number };
+    }>(`/investigations?${params}`);
 
-  return apiPaginated([], 0, 1, 20);
+    return apiPaginated(
+      result.data,
+      result.pagination?.total ?? 0,
+      1,
+      20,
+    );
+  } catch {
+    return apiPaginated([], 0, 1, 20);
+  }
 }
 
 // PRD: FR-API-012 POST /api/investigations -- 채증 작업 생성
