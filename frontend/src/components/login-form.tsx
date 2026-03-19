@@ -27,7 +27,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import {
-  isSetupComplete,
+  checkSetupStatus,
   isAuthenticated,
   mockLogin,
   getRegisteredUsers,
@@ -74,25 +74,29 @@ export function LoginForm() {
   })
 
   useEffect(() => {
-    // If setup not complete, redirect to setup
-    if (!isSetupComplete()) {
-      router.replace('/setup')
-      return
-    }
+    async function check() {
+      // 백엔드 DB에서 슈퍼어드민 존재 여부 확인
+      const setupComplete = await checkSetupStatus()
+      if (!setupComplete) {
+        router.replace('/setup')
+        return
+      }
 
-    setSetupDone(true)
+      setSetupDone(true)
 
-    // If already authenticated, redirect to dashboard
-    if (isAuthenticated()) {
-      router.replace('/')
-      return
-    }
+      // 이미 인증된 상태면 대시보드로 이동
+      if (isAuthenticated()) {
+        router.replace('/')
+        return
+      }
 
-    // Show hint about available accounts
-    const users = getRegisteredUsers()
-    if (users.length > 0) {
-      setHintEmail(users[0].email)
+      // 등록된 사용자 이메일 힌트 표시
+      const users = getRegisteredUsers()
+      if (users.length > 0) {
+        setHintEmail(users[0].email)
+      }
     }
+    check()
   }, [router])
 
   async function onSubmit(data: LoginFormData) {

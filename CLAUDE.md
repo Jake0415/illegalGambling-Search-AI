@@ -20,6 +20,7 @@
 - **🧩 컴포넌트 패턴**: `@/docs/guides/component-patterns.md`
 - **⚡ Next.js 15.5.3 전문 가이드**: `@/docs/guides/nextjs-15.md`
 - **📝 폼 처리 완전 가이드**: `@/docs/guides/forms-react-hook-form.md`
+- **🔐 인증 플로우 가이드**: `@/docs/guides/auth-flow.md`
 
 ## ⚡ 자주 사용하는 명령어
 
@@ -38,6 +39,8 @@ npx shadcn@latest add button    # 새 컴포넌트 추가
 ```bash
 npm run check-all   # 모든 검사 통과 확인
 npm run build       # 빌드 성공 확인
+npm run test:e2e    # E2E 인증 플로우 검증 (Playwright)
+npm run test:security  # 보안 테스트 (Playwright)
 ```
 
 💡 **상세 규칙은 위 개발 가이드 문서들을 참조하세요**

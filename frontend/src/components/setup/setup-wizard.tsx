@@ -15,7 +15,7 @@ import { StepDatabase } from './steps/step-database'
 import { StepServices } from './steps/step-services'
 import { StepConfig } from './steps/step-config'
 import { StepComplete } from './steps/step-complete'
-import { isSetupComplete } from '@/lib/mock-auth'
+import { checkSetupStatus } from '@/lib/mock-auth'
 
 // ============================================================================
 // Form Schema — combines all wizard steps
@@ -91,12 +91,16 @@ export function SetupWizard() {
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
-    // If setup is already done, redirect to login
-    if (isSetupComplete()) {
-      router.replace('/login')
-      return
+    // 백엔드 DB에서 슈퍼어드민 존재 여부 확인
+    async function check() {
+      const setupDone = await checkSetupStatus()
+      if (setupDone) {
+        router.replace('/login')
+        return
+      }
+      setReady(true)
     }
-    setReady(true)
+    check()
   }, [router])
 
   const form = useForm<SetupWizardFormData>({

@@ -36,6 +36,14 @@ logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
+@router.get("/setup-status")
+async def get_setup_status(db: AsyncSession = Depends(get_db)):
+    """슈퍼어드민 존재 여부 확인 (인증 불필요). Setup 완료 판단용."""
+    count_result = await db.execute(select(func.count()).select_from(User))
+    user_count = count_result.scalar() or 0
+    return {"data": {"isSetupComplete": user_count > 0}}
+
+
 @router.post("/login", response_model=ApiResponse[TokenResponse])
 async def login(
     request: LoginRequest,

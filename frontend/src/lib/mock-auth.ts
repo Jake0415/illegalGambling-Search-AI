@@ -27,10 +27,33 @@ export interface MockUser {
 // Setup
 // ---------------------------------------------------------------------------
 
-/** Check if initial setup has been completed */
+/** Check if initial setup has been completed (localStorage 폴백) */
 export function isSetupComplete(): boolean {
   if (typeof window === 'undefined') return false
   return localStorage.getItem(SETUP_COMPLETE_KEY) === 'true'
+}
+
+/** 백엔드 DB에서 슈퍼어드민 존재 여부 확인 (비동기) */
+export async function checkSetupStatus(): Promise<boolean> {
+  try {
+    const backendUrl =
+      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+    const res = await fetch(`${backendUrl}/v1/auth/setup-status`, {
+      cache: 'no-store',
+    })
+    if (res.ok) {
+      const json = await res.json()
+      const complete = json?.data?.isSetupComplete === true
+      // localStorage도 동기화
+      if (complete) {
+        localStorage.setItem(SETUP_COMPLETE_KEY, 'true')
+      }
+      return complete
+    }
+  } catch {
+    // 백엔드 연결 실패 시 localStorage 폴백
+  }
+  return isSetupComplete()
 }
 
 /** Complete setup and register the super admin user */
