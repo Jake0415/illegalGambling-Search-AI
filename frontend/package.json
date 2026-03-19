@@ -12,6 +12,8 @@
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "check-all": "npm run typecheck && npm run lint && npm run format:check",
+    "test:e2e": "npx playwright test tests/e2e/",
+    "test:e2e:ui": "npx playwright test tests/e2e/ --ui",
     "test:security": "npx playwright test tests/security/",
     "test:security:ui": "npx playwright test tests/security/ --ui",
     "prepare": "husky"
