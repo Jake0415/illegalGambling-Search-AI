@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 32 32">
+  <!-- 방패 배경 -->
+  <path d="M16 2 L28 7 L28 15 C28 22 23 28 16 30 C9 28 4 22 4 15 L4 7 Z" fill="#1e40af" stroke="#1e3a8a" stroke-width="1"/>
+  <!-- 방패 내부 그라데이션 효과 -->
+  <path d="M16 4 L26 8.5 L26 15 C26 21 21.5 26.5 16 28.5 C10.5 26.5 6 21 6 15 L6 8.5 Z" fill="#2563eb"/>
+  <!-- 금지 원형 -->
+  <circle cx="16" cy="15" r="8" fill="none" stroke="#ef4444" stroke-width="2.5"/>
+  <line x1="10.3" y1="9.3" x2="21.7" y2="20.7" stroke="#ef4444" stroke-width="2.5" stroke-linecap="round"/>
+  <!-- 주사위 (금지 표시 안) -->
+  <rect x="11.5" y="10.5" width="9" height="9" rx="1.5" fill="white" opacity="0.9"/>
+  <!-- 주사위 눈 (6면) -->
+  <circle cx="14" cy="13" r="0.9" fill="#1e40af"/>
+  <circle cx="18" cy="13" r="0.9" fill="#1e40af"/>
+  <circle cx="14" cy="15" r="0.9" fill="#1e40af"/>
+  <circle cx="18" cy="15" r="0.9" fill="#1e40af"/>
+  <circle cx="14" cy="17" r="0.9" fill="#1e40af"/>
+  <circle cx="18" cy="17" r="0.9" fill="#1e40af"/>
+</svg>

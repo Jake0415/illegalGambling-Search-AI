@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   title: 'GambleGuard - 불법 도박 사이트 탐지 시스템',
   description:
     'AI 기반 불법 도박 사이트 탐지 및 증거 수집 시스템',
+  icons: {
+    icon: '/icon.svg',
+  },
 }
 
 export default function RootLayout({
