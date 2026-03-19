@@ -3,12 +3,10 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 
+import bcrypt
 from jose import JWTError, jwt
-from passlib.context import CryptContext
 
 from app.config import settings
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto", bcrypt__rounds=12)
 
 
 def create_access_token(data: dict) -> str:
@@ -43,10 +41,10 @@ def verify_token(token: str) -> Optional[dict]:
 
 
 def hash_password(password: str) -> str:
-    """bcrypt cost 12로 비밀번호 해싱"""
-    return pwd_context.hash(password)
+    """bcrypt로 비밀번호 해싱"""
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("utf-8")
 
 
 def verify_password(plain: str, hashed: str) -> bool:
     """평문 비밀번호와 해시 비교"""
-    return pwd_context.verify(plain, hashed)
+    return bcrypt.checkpw(plain.encode("utf-8"), hashed.encode("utf-8"))

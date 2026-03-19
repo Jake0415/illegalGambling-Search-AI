@@ -1,41 +1,40 @@
 import type { NextRequest } from 'next/server';
 
 import { apiError, apiSuccess } from '@/server/api/response';
+import { fetchBackend } from '@/server/api/backend-client';
 
-// PRD: FR-API-001 POST /api/auth/login -- 관리자 로그인
-// Phase 3에서 NextAuth.js v5 Credentials Provider 연동
+// POST /api/auth/login -- FastAPI 백엔드 인증 프록시
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-
-    // TODO: Phase 3 - 실제 인증 로직 구현
-    // 1. Zod 스키마 검증 (loginSchema)
-    // 2. 이메일로 사용자 조회 (Prisma)
-    // 3. bcrypt 비밀번호 비교 (cost factor 12)
-    // 4. 로그인 실패 카운터 관리 (Redis, 5회 연속 실패 시 15분 잠금)
-    // 5. JWT 토큰 발급 (access_token 1시간, refresh_token 7일)
-    // 6. 감사 로그 기록
 
     if (!body.email || !body.password) {
       return apiError('이메일과 비밀번호를 입력해주세요.', 'VALIDATION_ERROR', 400);
     }
 
-    return apiSuccess(
-      {
-        accessToken: 'dummy_access_token',
-        refreshToken: 'dummy_refresh_token',
-        expiresIn: 3600,
-        tokenType: 'Bearer' as const,
-        user: {
-          id: 'usr_dummy',
-          email: body.email,
-          name: '관리자',
-          role: 'ADMIN',
-        },
-      },
-      200,
-    );
-  } catch {
-    return apiError('잘못된 요청입니다.', 'BAD_REQUEST', 400);
+    const result = await fetchBackend<{
+      data: {
+        access_token: string;
+        refresh_token: string;
+        expires_in: number;
+      };
+    }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email: body.email, password: body.password }),
+    });
+
+    return apiSuccess(result.data);
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : '로그인에 실패했습니다.';
+    // 백엔드 에러 메시지 전달
+    if (message.includes('401') || message.includes('403')) {
+      return apiError(
+        '이메일 또는 비밀번호가 올바르지 않습니다.',
+        'AUTH_FAILED',
+        401,
+      );
+    }
+    return apiError(message, 'AUTH_FAILED', 401);
   }
 }

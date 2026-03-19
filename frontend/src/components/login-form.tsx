@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { EyeIcon, EyeOffIcon, Info, Loader2 } from 'lucide-react'
+import { EyeIcon, EyeOffIcon, Loader2 } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -29,8 +29,6 @@ import { Label } from '@/components/ui/label'
 import {
   checkSetupStatus,
   isAuthenticated,
-  mockLogin,
-  getRegisteredUsers,
 } from '@/lib/mock-auth'
 
 // ---------------------------------------------------------------------------
@@ -61,7 +59,6 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [setupDone, setSetupDone] = useState(false)
-  const [hintEmail, setHintEmail] = useState<string | null>(null)
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -89,12 +86,6 @@ export function LoginForm() {
         router.replace('/')
         return
       }
-
-      // 등록된 사용자 이메일 힌트 표시
-      const users = getRegisteredUsers()
-      if (users.length > 0) {
-        setHintEmail(users[0].email)
-      }
     }
     check()
   }, [router])
@@ -103,15 +94,37 @@ export function LoginForm() {
     setIsLoading(true)
     setServerError(null)
     try {
-      // Simulate network delay
-      await new Promise((r) => setTimeout(r, 500))
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: data.email, password: data.password }),
+      })
+      const json = await res.json()
 
-      const user = mockLogin(data.email, data.password)
-      if (!user) {
+      if (!res.ok || !json.success) {
         setServerError(
-          '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.',
+          json.error?.message || '로그인에 실패했습니다. 이메일과 비밀번호를 확인해주세요.',
         )
         return
+      }
+
+      // JWT 토큰 저장
+      const tokenData = json.data
+      localStorage.setItem('gambleguard_auth_token', tokenData.access_token)
+      localStorage.setItem('gambleguard_refresh_token', tokenData.refresh_token)
+      localStorage.setItem('gambleguard_setup_complete', 'true')
+
+      // JWT에서 사용자 정보 추출하여 저장
+      try {
+        const payload = JSON.parse(atob(tokenData.access_token.split('.')[1]))
+        localStorage.setItem('gambleguard_current_user', JSON.stringify({
+          id: payload.sub,
+          email: payload.email,
+          role: payload.role,
+          name: payload.email.split('@')[0],
+        }))
+      } catch {
+        // JWT 디코딩 실패해도 로그인 진행
       }
 
       router.push('/')
@@ -231,21 +244,6 @@ export function LoginForm() {
           </form>
         </Form>
 
-        {hintEmail && (
-          <div className="mt-4 rounded-md border border-blue-200 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/50">
-            <div className="flex items-start gap-2">
-              <Info className="mt-0.5 size-4 shrink-0 text-blue-600 dark:text-blue-400" />
-              <div className="text-xs text-blue-700 dark:text-blue-300">
-                <p className="font-medium">데모 계정 안내</p>
-                <p className="mt-1">
-                  초기 설정에서 등록한 관리자 이메일(
-                  <span className="font-mono font-medium">{hintEmail}</span>
-                  )과 비밀번호로 로그인하세요.
-                </p>
-              </div>
-            </div>
-          </div>
-        )}
 
         <p className="mt-4 text-center text-xs text-muted-foreground">
           계정은 슈퍼관리자가 시스템 설정에서 추가할 수 있습니다.

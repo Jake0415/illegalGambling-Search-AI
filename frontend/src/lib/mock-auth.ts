@@ -109,9 +109,11 @@ export function getCurrentUser(): MockUser | null {
   }
 }
 
-/** Check if a user is currently authenticated */
+/** Check if a user is currently authenticated (JWT 토큰 존재 확인) */
 export function isAuthenticated(): boolean {
-  return getCurrentUser() !== null
+  if (typeof window === 'undefined') return false
+  const token = localStorage.getItem(AUTH_TOKEN_KEY)
+  return !!token
 }
 
 // ---------------------------------------------------------------------------
