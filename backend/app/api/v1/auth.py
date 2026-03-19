@@ -38,10 +38,13 @@ router = APIRouter()
 
 @router.get("/setup-status")
 async def get_setup_status(db: AsyncSession = Depends(get_db)):
-    """슈퍼어드민 존재 여부 확인 (인증 불필요). Setup 완료 판단용."""
-    count_result = await db.execute(select(func.count()).select_from(User))
-    user_count = count_result.scalar() or 0
-    return {"data": {"isSetupComplete": user_count > 0}}
+    """슈퍼어드민 존재 여부 확인 (인증 불필요). Setup 완료 판단용.
+    슈퍼어드민은 1명만 허용. 등록되어 있으면 isSetupComplete=true → 로그인 화면으로 이동."""
+    result = await db.execute(
+        select(func.count()).select_from(User).where(User.role == UserRole.SUPER_ADMIN)
+    )
+    super_admin_count = result.scalar() or 0
+    return {"data": {"isSetupComplete": super_admin_count > 0}}
 
 
 @router.post("/login", response_model=ApiResponse[TokenResponse])

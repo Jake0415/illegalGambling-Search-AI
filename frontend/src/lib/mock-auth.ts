@@ -36,9 +36,8 @@ export function isSetupComplete(): boolean {
 /** 백엔드 DB에서 슈퍼어드민 존재 여부 확인 (비동기) */
 export async function checkSetupStatus(): Promise<boolean> {
   try {
-    const backendUrl =
-      process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
-    const res = await fetch(`${backendUrl}/v1/auth/setup-status`, {
+    // Next.js API 라우트를 프록시로 사용 (자체 서명 인증서 문제 회피)
+    const res = await fetch('/api/auth/setup-status', {
       cache: 'no-store',
     })
     if (res.ok) {
@@ -51,7 +50,7 @@ export async function checkSetupStatus(): Promise<boolean> {
       return complete
     }
   } catch {
-    // 백엔드 연결 실패 시 localStorage 폴백
+    // API 연결 실패 시 localStorage 폴백
   }
   return isSetupComplete()
 }

@@ -67,16 +67,32 @@ AuthGuard (보호된 라우트 진입점)
 
 ---
 
+## 슈퍼어드민 정책
+
+- **슈퍼어드민은 시스템에 1명만 존재**
+- `POST /api/v1/auth/setup`은 users 테이블이 비어있을 때만 동작 (중복 생성 차단)
+- `GET /api/v1/auth/setup-status`는 `role=SUPER_ADMIN`인 사용자가 1명이라도 있으면 `isSetupComplete: true` 반환
+- 슈퍼어드민이 등록된 상태에서 `/setup` 접속 → **즉시 `/login`으로 리다이렉트**
+
+---
+
 ## Setup 상태 판단 로직
 
 ```
-checkSetupStatus() (비동기)
+브라우저 (클라이언트)
   │
-  ├─ 백엔드 GET /api/v1/auth/setup-status 호출
-  │     ├─ 성공: DB의 users 테이블 레코드 수 > 0 → true
-  │     └─ 성공: users 테이블 비어있음 → false
+  ▼
+checkSetupStatus()
   │
-  └─ 백엔드 연결 실패 → localStorage 폴백 (isSetupComplete)
+  ├─ Next.js API 프록시 GET /api/auth/setup-status 호출
+  │     │
+  │     ▼ (서버사이드)
+  │     FastAPI GET /api/v1/auth/setup-status
+  │     │
+  │     ├─ DB에 role=SUPER_ADMIN 사용자 존재 → true
+  │     └─ 없음 → false
+  │
+  └─ API 연결 실패 → localStorage 폴백 (isSetupComplete)
 ```
 
 **중요**: 브라우저 localStorage가 삭제되어도 백엔드 DB에 슈퍼어드민이 있으면 `/login`으로 정상 이동합니다.
